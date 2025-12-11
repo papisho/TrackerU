@@ -179,6 +179,30 @@
             </div>
         </div>
 
+
+                <div class="profile-info">
+            <!-- ... other info items ... -->
+            <div class="info-item">
+                <div class="info-label">Overall Performance</div>
+                <div class="info-value" id="overallPerformance">-</div>
+            </div>
+        </div>
+
+        <!-- AI Development Summary -->
+        <section class="metric-section" style="margin-top: var(--space-lg);">
+            <h3 style="margin-bottom: var(--space-md);">AI Development Summary (beta)</h3>
+            <p id="aiSummaryOverall" style="margin-bottom: var(--space-sm); color: var(--gray-7);"></p>
+            <p style="margin-bottom: var(--space-xs);">
+                <strong>Strengths:</strong>
+                <span id="aiSummaryStrengths"></span>
+            </p>
+            <p>
+                <strong>Focus areas:</strong>
+                <span id="aiSummaryFocus"></span>
+            </p>
+        </section>
+
+       
         <!-- Tabs -->
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('metrics-tab')">📊 Performance Metrics</button>
@@ -233,6 +257,18 @@
             
             const avgLevel = totalMetrics > 0 ? Math.round(totalLevel / totalMetrics) : 0;
             document.getElementById('overallPerformance').textContent = `${avgLevel}/10`;
+
+            // AI Development Summary (player-facing)
+            const aiSummary = AI.generatePlayerSummary(player);
+            const overallEl = document.getElementById('aiSummaryOverall');
+            const strengthsEl = document.getElementById('aiSummaryStrengths');
+            const focusEl = document.getElementById('aiSummaryFocus');
+
+            if (overallEl && strengthsEl && focusEl) {
+                overallEl.textContent = aiSummary.overallText;
+                strengthsEl.textContent = aiSummary.strengthsText;
+                focusEl.textContent = aiSummary.focusText;
+            }
 
             loadMetrics(player);
             loadVideos(player);

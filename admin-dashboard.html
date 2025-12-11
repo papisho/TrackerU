@@ -378,6 +378,19 @@
             }
             
             detailsHTML += '</div>';
+
+            // AI Development Summary (coach-facing)
+            const aiSummary = AI.generatePlayerSummary(player);
+
+            detailsHTML += `
+                <div style="margin-top: var(--space-xl); padding: var(--space-lg); border-radius: var(--radius-lg); background: var(--gray-50); border-left: 4px solid var(--primary);">
+                    <h4 style="margin-bottom: var(--space-md);">AI Development Summary (beta)</h4>
+                    <p style="margin-bottom: var(--space-sm);">${aiSummary.overallText}</p>
+                    <p style="margin-bottom: var(--space-xs);"><strong>Strengths:</strong> ${aiSummary.strengthsText}</p>
+                    <p><strong>Focus areas:</strong> ${aiSummary.focusText}</p>
+                </div>
+            `;
+
             
             detailsHTML += `<div style="margin-top: var(--space-lg); display: flex; gap: var(--space-md);">
                 <button onclick="openVideoModal('${player.id}')" class="btn btn-secondary">Assign Video</button>

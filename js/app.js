@@ -260,6 +260,119 @@ const UI = {
   }
 };
 
+// Simple rule-based "AI" helper for player summaries
+const AI = {
+  _categoryLabels: {
+    technical: 'technical skills',
+    mentality: 'mentality',
+    intelligence: 'soccer intelligence',
+    athleticism: 'athleticism'
+  },
+
+  _metricLabels: {
+    ballControl: 'ball control (first touch & receiving)',
+    ballStriking: 'ball striking (shooting & long passing)',
+    passing: 'short and long passing',
+    duels: '1v1 duel ability',
+    emotionControl: 'emotion control',
+    selfDevelopment: 'taking charge of their own development',
+    vocal: 'vocal leadership',
+    performance: 'performance consistency',
+    focus: 'focus & concentration',
+    anticipation: 'game anticipation and reading play',
+    decisionMaking: 'decision making',
+    versatility: 'versatility (playing multiple roles)',
+    spaceUsage: 'use and creation of space',
+    agility: 'agility',
+    speed: 'speed',
+    stamina: 'stamina'
+  },
+
+  _collectMetrics(player) {
+    const metrics = [];
+    if (!player || !player.metrics) return metrics;
+
+    Object.entries(player.metrics).forEach(([catKey, category]) => {
+      Object.entries(category).forEach(([metricKey, metric]) => {
+        if (!metric || typeof metric.level !== 'number') return;
+
+        metrics.push({
+          key: metricKey,
+          label: this._metricLabels[metricKey] || metricKey,
+          category: this._categoryLabels[catKey] || catKey,
+          level: metric.level
+        });
+      });
+    });
+
+    return metrics;
+  },
+
+  _joinLabels(items) {
+    const labels = items.map(i => i.label);
+    if (labels.length === 0) return '';
+    if (labels.length === 1) return labels[0];
+    if (labels.length === 2) return `${labels[0]} and ${labels[1]}`;
+    return `${labels.slice(0, -1).join(', ')} and ${labels[labels.length - 1]}`;
+  },
+
+  generatePlayerSummary(player) {
+    const metrics = this._collectMetrics(player);
+
+    if (metrics.length === 0) {
+      return {
+        overallScore: 0,
+        strengths: [],
+        weaknesses: [],
+        overallText: 'We do not have enough rating data yet to generate a development summary.',
+        strengthsText: 'Rate a few areas to see strengths here.',
+        focusText: 'Rate a few areas to see focus points here.'
+      };
+    }
+
+    const total = metrics.reduce((sum, m) => sum + m.level, 0);
+    const rawAvg = total / metrics.length;
+    const overallScore = Math.round(rawAvg * 10) / 10; // 1 decimal
+
+    const sorted = [...metrics].sort((a, b) => b.level - a.level);
+    const strengths = sorted.slice(0, 3);
+    const weaknesses = sorted.slice(-3).reverse(); // lowest first
+
+    const name = player.firstName ? player.firstName : 'This player';
+
+    let overallBand;
+    if (overallScore >= 8) {
+      overallBand = 'at a very strong overall level';
+    } else if (overallScore >= 6.5) {
+      overallBand = 'at a solid overall level';
+    } else if (overallScore >= 5) {
+      overallBand = 'developing with room for growth in several areas';
+    } else {
+      overallBand = 'in an early development stage and building foundations';
+    }
+
+    const overallText = `${name} is currently performing ${overallBand} (around ${overallScore}/10 across all tracked areas).`;
+
+    const strengthsText = strengths.length
+      ? `${this._joinLabels(strengths)} stand out as current strengths.`
+      : 'No clear strengths identified yet – add more ratings to see them here.';
+
+    const focusText = weaknesses.length
+      ? `${this._joinLabels(weaknesses)} are the main priorities for improvement over the next phase.`
+      : 'No clear focus areas identified yet – add more ratings to see them here.';
+
+    return {
+      overallScore,
+      strengths,
+      weaknesses,
+      overallText,
+      strengthsText,
+      focusText
+    };
+  }
+};
+
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
   DataManager.init();
