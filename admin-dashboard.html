@@ -402,10 +402,220 @@
 
         function editPlayer(playerId) {
             const player = DataManager.getPlayerById(playerId);
-            if (player) {
-                viewPlayer(playerId);
-            }
+            if (!player) return;
+
+            document.getElementById('modalPlayerName').textContent = `Edit: ${player.firstName} ${player.lastName}`;
+
+            const metricConfig = {
+                technical: {
+                    label: '⚡ Technical Skills',
+                    metrics: {
+                        ballControl: 'Receiving the ball (ball control)',
+                        ballStriking: 'Ball striking (short & long distance)',
+                        passing: 'Passing (short & long range)',
+                        duels: 'Ability to win 1v1 duels'
+                    }
+                },
+                mentality: {
+                    label: '🧠 Mentality',
+                    metrics: {
+                        emotionControl: 'Controls emotion',
+                        selfDevelopment: 'Takes charge of their own development',
+                        vocal: 'Vocal / communicates',
+                        performance: 'Performs well',
+                        focus: 'Maintains focus'
+                    }
+                },
+                intelligence: {
+                    label: '🎯 Soccer Intelligence',
+                    metrics: {
+                        anticipation: 'Anticipates and reads the game',
+                        decisionMaking: 'Decision making',
+                        versatility: 'Versatility',
+                        spaceUsage: 'Use / creation of space'
+                    }
+                },
+                athleticism: {
+                    label: '💪 Athleticism',
+                    metrics: {
+                        agility: 'Agility',
+                        speed: 'Speed',
+                        stamina: 'Stamina'
+                    }
+                }
+            };
+
+            let detailsHTML = `
+                <form id="editPlayerForm" onsubmit="savePlayerEdits(event, '${player.id}')">
+                    <div style="margin-bottom: var(--space-lg); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-md);">
+                        <div class="form-group">
+                            <label class="form-label">First Name</label>
+                            <input type="text" class="form-input" name="firstName" value="${player.firstName || ''}" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Last Name</label>
+                            <input type="text" class="form-input" name="lastName" value="${player.lastName || ''}" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Position</label>
+                            <input type="text" class="form-input" name="position" value="${player.position || ''}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Jersey Number</label>
+                            <input type="number" class="form-input" name="jerseyNumber" value="${player.jerseyNumber || ''}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Date of Birth</label>
+                            <input type="date" class="form-input" name="dateOfBirth" value="${player.dateOfBirth || ''}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Player Code (read-only)</label>
+                            <input type="text" class="form-input" value="${player.code}" disabled>
+                        </div>
+                    </div>
+
+                    <h4 style="border-bottom: 2px solid var(--gray-200); padding-bottom: var(--space-md); margin-bottom: var(--space-md);">
+                        Performance Metrics (1–10) & Comments
+                    </h4>
+
+                    <div style="display: grid; grid-template-columns: 1fr; gap: var(--space-lg);">
+            `;
+
+            // Build editable metric inputs
+            Object.entries(metricConfig).forEach(([catKey, catCfg]) => {
+                const playerCat = (player.metrics && player.metrics[catKey]) ? player.metrics[catKey] : {};
+
+                detailsHTML += `
+                    <div style="background-color: var(--gray-50); padding: var(--space-md); border-radius: var(--radius-md);">
+                        <h5 style="margin-bottom: var(--space-md);">${catCfg.label}</h5>
+                `;
+
+                Object.entries(catCfg.metrics).forEach(([metricKey, metricLabel]) => {
+                    const current = playerCat[metricKey] || {};
+                    const currentLevel = (typeof current.level === 'number') ? current.level : '';
+                    const currentComment = current.comment || '';
+
+                    detailsHTML += `
+                        <div class="form-group" style="margin-bottom: var(--space-md);">
+                            <label class="form-label">${metricLabel}</label>
+                            <div style="display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-xs);">
+                                <input 
+                                    type="number" 
+                                    class="form-input" 
+                                    name="level-${catKey}-${metricKey}"
+                                    min="1" max="10" 
+                                    value="${currentLevel}"
+                                    style="max-width: 90px;"
+                                    required
+                                >
+                                <span style="font-size: var(--font-size-sm); color: var(--gray-600);">1 = needs lots of work, 10 = elite</span>
+                            </div>
+                            <textarea 
+                                class="form-input" 
+                                name="comment-${catKey}-${metricKey}"
+                                rows="2"
+                                placeholder="Coach comment for this area..."
+                            >${currentComment}</textarea>
+                        </div>
+                    `;
+                });
+
+                detailsHTML += `</div>`;
+            });
+
+            detailsHTML += `
+                    </div>
+
+                    <div style="margin-top: var(--space-lg); display: flex; gap: var(--space-md); justify-content: flex-end;">
+                        <button type="button" class="btn btn-outline" onclick="UI.closeModal('playerModal')">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            `;
+
+            document.getElementById('playerDetails').innerHTML = detailsHTML;
+            UI.openModal('playerModal');
         }
+
+
+        function savePlayerEdits(event, playerId) {
+            event.preventDefault();
+
+            const form = event.target;
+            const player = DataManager.getPlayerById(playerId);
+            if (!player) return;
+
+            const metricConfig = {
+                technical: {
+                    metrics: {
+                        ballControl: '',
+                        ballStriking: '',
+                        passing: '',
+                        duels: ''
+                    }
+                },
+                mentality: {
+                    metrics: {
+                        emotionControl: '',
+                        selfDevelopment: '',
+                        vocal: '',
+                        performance: '',
+                        focus: ''
+                    }
+                },
+                intelligence: {
+                    metrics: {
+                        anticipation: '',
+                        decisionMaking: '',
+                        versatility: '',
+                        spaceUsage: ''
+                    }
+                },
+                athleticism: {
+                    metrics: {
+                        agility: '',
+                        speed: '',
+                        stamina: ''
+                    }
+                }
+            };
+
+            // Build updated metrics object from the form
+            const updatedMetrics = {};
+
+            Object.entries(metricConfig).forEach(([catKey, catCfg]) => {
+                updatedMetrics[catKey] = {};
+                Object.keys(catCfg.metrics).forEach(metricKey => {
+                    const levelInput = form.querySelector(`[name="level-${catKey}-${metricKey}"]`);
+                    const commentInput = form.querySelector(`[name="comment-${catKey}-${metricKey}"]`);
+
+                    let level = parseInt(levelInput.value, 10);
+                    if (isNaN(level)) level = 0;
+                    if (level < 1) level = 1;
+                    if (level > 10) level = 10;
+
+                    updatedMetrics[catKey][metricKey] = {
+                        level,
+                        comment: (commentInput.value || '').trim()
+                    };
+                });
+            });
+
+            const updatedData = {
+                firstName: (form.firstName.value || '').trim(),
+                lastName: (form.lastName.value || '').trim(),
+                position: (form.position.value || '').trim(),
+                jerseyNumber: form.jerseyNumber.value ? parseInt(form.jerseyNumber.value, 10) : '',
+                dateOfBirth: form.dateOfBirth.value || player.dateOfBirth,
+                metrics: updatedMetrics
+            };
+
+            DataManager.updatePlayer(playerId, updatedData);
+            UI.showAlert('Player updated successfully', 'success');
+            UI.closeModal('playerModal');
+            loadPlayers();
+        }
+
 
         function deletePlayer(playerId) {
             if (confirm('Are you sure you want to delete this player? This action cannot be undone.')) {
