@@ -1,0 +1,98 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login - TrackerU</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .login-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--primary), #0f172a);
+        }
+        
+        .login-card {
+            background: white;
+            padding: var(--space-2xl);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-xl);
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .login-header {
+            text-align: center;
+            margin-bottom: var(--space-2xl);
+        }
+        
+        .login-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 40px;
+            margin: 0 auto var(--space-md);
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <div class="login-icon">🔐</div>
+                <h1>Coach Dashboard</h1>
+                <p style="color: var(--gray-600);">Admin Access Only</p>
+            </div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label class="form-label">Username</label>
+                    <input type="text" class="form-input" id="username" placeholder="Enter your username" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" class="form-input" id="password" placeholder="Enter your password" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-bottom: var(--space-md);">Login</button>
+            </form>
+
+            <div style="text-align: center;">
+                <p style="color: var(--gray-600); font-size: var(--font-size-sm); margin-bottom: var(--space-md);">
+                    Don't have an account? Contact your system administrator.
+                </p>
+                <a href="index.html" style="color: var(--primary); font-size: var(--font-size-sm);">← Back to Home</a>
+            </div>
+
+            <div id="errorAlert" class="alert alert-danger" style="display: none; margin-top: var(--space-md);"></div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorAlert = document.getElementById('errorAlert');
+            
+            if (Auth.loginAdmin(username, password)) {
+                window.location.href = 'admin-dashboard.html';
+            } else {
+                errorAlert.textContent = 'Invalid username or password';
+                errorAlert.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>

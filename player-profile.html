@@ -1,0 +1,342 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Player Profile - TrackerU</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .profile-header {
+            background: linear-gradient(135deg, var(--primary), #0f172a);
+            color: white;
+            padding: var(--space-2xl) 0;
+            margin-bottom: var(--space-xl);
+        }
+        
+        .profile-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-lg);
+            margin-bottom: var(--space-xl);
+        }
+        
+        .info-card {
+            background: white;
+            padding: var(--space-lg);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .info-label {
+            color: var(--gray-500);
+            font-size: var(--font-size-sm);
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .info-value {
+            font-size: var(--font-size-lg);
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-top: var(--space-sm);
+        }
+        
+        .metric-section {
+            background: white;
+            padding: var(--space-lg);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            margin-bottom: var(--space-lg);
+        }
+        
+        .metric-item {
+            padding: var(--space-md);
+            background-color: var(--gray-50);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--space-md);
+        }
+        
+        .metric-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-sm);
+        }
+        
+        .metric-name {
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+        
+        .metric-level {
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: var(--radius-full);
+            color: white;
+            font-size: var(--font-size-sm);
+        }
+        
+        .metric-comment {
+            color: var(--gray-600);
+            font-size: var(--font-size-sm);
+            margin-top: var(--space-sm);
+            font-style: italic;
+        }
+        
+        .video-card {
+            background-color: var(--gray-50);
+            padding: var(--space-lg);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--space-md);
+            border-left: 4px solid var(--secondary);
+        }
+        
+        .video-title {
+            font-weight: 600;
+            margin-bottom: var(--space-sm);
+        }
+        
+        .video-date {
+            font-size: var(--font-size-sm);
+            color: var(--gray-500);
+        }
+        
+        .tabs {
+            display: flex;
+            gap: var(--space-md);
+            margin-bottom: var(--space-lg);
+            border-bottom: 2px solid var(--gray-200);
+        }
+        
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: var(--space-md);
+            border-bottom: 3px solid transparent;
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--gray-600);
+            transition: var(--transition);
+        }
+        
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+        
+        .tab-pane {
+            display: none;
+        }
+        
+        .tab-pane.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand">
+                <div class="navbar-brand-icon">⚽</div>
+                <span>TrackerU</span>
+            </div>
+            <ul class="navbar-menu">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="player-access.html">Back to Access</a></li>
+                <li><a href="#" onclick="logoutPlayer()" style="cursor: pointer;">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Profile Header -->
+    <div class="profile-header">
+        <div class="container">
+            <h1 id="playerName">Loading...</h1>
+            <p id="playerDetails" style="color: rgba(255,255,255,0.9); margin: 0;"></p>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Player Info -->
+        <div class="profile-info">
+            <div class="info-card">
+                <div class="info-label">Position</div>
+                <div class="info-value" id="position">-</div>
+            </div>
+            <div class="info-card">
+                <div class="info-label">Jersey Number</div>
+                <div class="info-value" id="jerseyNumber">-</div>
+            </div>
+            <div class="info-card">
+                <div class="info-label">Date of Birth</div>
+                <div class="info-value" id="dob">-</div>
+            </div>
+            <div class="info-card">
+                <div class="info-label">Overall Performance</div>
+                <div class="info-value" id="overallPerformance">-</div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('metrics-tab')">📊 Performance Metrics</button>
+            <button class="tab-btn" onclick="switchTab('videos-tab')">🎬 Training Videos</button>
+        </div>
+
+        <!-- Metrics Tab -->
+        <div id="metrics-tab" class="tab-pane active">
+            <div id="metricsContainer"></div>
+        </div>
+
+        <!-- Videos Tab -->
+        <div id="videos-tab" class="tab-pane">
+            <div class="metric-section">
+                <h3 style="margin-bottom: var(--space-lg);">🎬 Assigned Training Videos</h3>
+                <div id="videosContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        const playerCode = Auth.getCurrentPlayerCode();
+        if (!playerCode) {
+            window.location.href = 'player-access.html';
+        }
+
+        function loadPlayerProfile() {
+            const player = DataManager.getPlayerByCode(playerCode);
+            
+            if (!player) {
+                window.location.href = 'player-access.html';
+                return;
+            }
+
+            document.getElementById('playerName').textContent = `${player.firstName} ${player.lastName}`;
+            document.getElementById('playerDetails').textContent = `${player.position} | Jersey #${player.jerseyNumber}`;
+
+            document.getElementById('position').textContent = player.position;
+            document.getElementById('jerseyNumber').textContent = player.jerseyNumber;
+            document.getElementById('dob').textContent = UI.formatDate(player.dateOfBirth);
+
+            let totalLevel = 0;
+            let totalMetrics = 0;
+            
+            Object.values(player.metrics).forEach(category => {
+                Object.values(category).forEach(metric => {
+                    totalLevel += metric.level;
+                    totalMetrics++;
+                });
+            });
+            
+            const avgLevel = totalMetrics > 0 ? Math.round(totalLevel / totalMetrics) : 0;
+            document.getElementById('overallPerformance').textContent = `${avgLevel}/10`;
+
+            loadMetrics(player);
+            loadVideos(player);
+        }
+
+        function loadMetrics(player) {
+            const metricsContainer = document.getElementById('metricsContainer');
+            metricsContainer.innerHTML = '';
+
+            const categories = {
+                technical: { title: '⚡ Technical Skills', icon: '⚡' },
+                mentality: { title: '🧠 Mentality', icon: '🧠' },
+                intelligence: { title: '🎯 Soccer Intelligence', icon: '🎯' },
+                athleticism: { title: '💪 Athleticism', icon: '💪' }
+            };
+
+            const metricLabels = {
+                ballControl: 'Ball Control (Receiving)',
+                ballStriking: 'Ball Striking',
+                passing: 'Passing',
+                duels: '1v1 Duel Ability',
+                emotionControl: 'Emotion Control',
+                selfDevelopment: 'Self Development',
+                vocal: 'Vocal Leadership',
+                performance: 'Performance Consistency',
+                focus: 'Focus & Concentration',
+                anticipation: 'Game Anticipation',
+                decisionMaking: 'Decision Making',
+                versatility: 'Versatility',
+                spaceUsage: 'Space Usage',
+                agility: 'Agility',
+                speed: 'Speed',
+                stamina: 'Stamina'
+            };
+
+            Object.entries(player.metrics).forEach(([catKey, category]) => {
+                const section = document.createElement('div');
+                section.className = 'metric-section';
+                
+                let html = `<h3 style="margin-bottom: var(--space-lg);">${categories[catKey].title}</h3>`;
+
+                Object.entries(category).forEach(([metricKey, metric]) => {
+                    const color = UI.getMetricRatingColor(metric.level);
+                    const displayName = metricLabels[metricKey] || metricKey;
+                    
+                    html += `
+                        <div class="metric-item">
+                            <div class="metric-header">
+                                <span class="metric-name">${displayName}</span>
+                                <span class="metric-level" style="background-color: ${color};">${metric.level}/10</span>
+                            </div>
+                            ${metric.comment ? `<div class="metric-comment">💬 ${metric.comment}</div>` : ''}
+                        </div>
+                    `;
+                });
+
+                section.innerHTML = html;
+                metricsContainer.appendChild(section);
+            });
+        }
+
+        function loadVideos(player) {
+            const videosContainer = document.getElementById('videosContainer');
+            videosContainer.innerHTML = '';
+
+            if (!player.assignedVideos || player.assignedVideos.length === 0) {
+                videosContainer.innerHTML = '<p style="color: var(--gray-500); text-align: center; padding: var(--space-lg);">No training videos assigned yet. Check back soon!</p>';
+                return;
+            }
+
+            player.assignedVideos.forEach(video => {
+                const videoCard = document.createElement('div');
+                videoCard.className = 'video-card';
+                
+                videoCard.innerHTML = `
+                    <div class="video-title">${video.title}</div>
+                    <div class="video-date">📅 Assigned: ${UI.formatDate(video.assignedDate)}</div>
+                    ${video.url ? `
+                        <div style="margin-top: var(--space-md);">
+                            <iframe width="100%" height="315" src="${video.url}" 
+                                frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                allowfullscreen style="border-radius: var(--radius-md);"></iframe>
+                        </div>
+                    ` : ''}
+                `;
+                
+                videosContainer.appendChild(videoCard);
+            });
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function logoutPlayer() {
+            Auth.clearCurrentPlayerCode();
+            window.location.href = 'player-access.html';
+        }
+
+        loadPlayerProfile();
+    </script>
+</body>
+</html>
