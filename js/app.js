@@ -1,174 +1,136 @@
 
 // TrackerU - Main Application Logic
 
+// Supabase configuration
+const SUPABASE_URL = 'https://axrqkbdgcvsyoxlbuwoh.supabase.co';   // <- paste from Supabase
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF4cnFrYmRnY3ZzeW94bGJ1d29oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU0OTU4MTcsImV4cCI6MjA4MTA3MTgxN30.kTP1WkLi9dkU5VB6egAF6IehYVURVV2inIju_2ckTHQ';        // <- paste anon key
+
+const SUPABASE_API = `${SUPABASE_URL}/rest/v1`;
+const SUPABASE_HEADERS = {
+  apikey: SUPABASE_ANON_KEY,
+  Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+  'Content-Type': 'application/json'
+};
+
+
 // Data Management System
 const DataManager = {
-  ADMIN_USERNAME: 'admin',
-  ADMIN_PASSWORD: 'password123',
-  
-  init() {
-    if (!localStorage.getItem('trackerU_players')) {
-      this.setPlayers(this.getDefaultPlayers());
+  _players: [],
+  _initialized: false,
+
+  async init() {
+    if (this._initialized) return;
+    try {
+      const res = await fetch(`${SUPABASE_API}/players?select=*`, {
+        headers: SUPABASE_HEADERS
+      });
+      if (!res.ok) {
+        console.error('Failed to fetch players from Supabase', await res.text());
+        this._players = [];
+      } else {
+        this._players = await res.json();
+      }
+      this._initialized = true;
+    } catch (err) {
+      console.error('Error loading players from Supabase:', err);
+      this._players = [];
+      this._initialized = true;
     }
   },
-  
+
+  // Local cache helpers
   getPlayers() {
-    return JSON.parse(localStorage.getItem('trackerU_players') || '[]');
+    return this._players;
   },
-  
-  setPlayers(players) {
-    localStorage.setItem('trackerU_players', JSON.stringify(players));
-  },
-  
-  getPlayerByCode(code) {
-    const players = this.getPlayers();
-    return players.find(p => p.code === code);
-  },
-  
+
   getPlayerById(id) {
-    const players = this.getPlayers();
-    return players.find(p => p.id === id);
+    return this._players.find(p => String(p.id) === String(id)) || null;
   },
-  
-  addPlayer(playerData) {
-    const players = this.getPlayers();
-    const newPlayer = {
-      id: Date.now().toString(),
-      code: this.generateSecretCode(),
-      createdAt: new Date().toISOString(),
-      ...playerData
-    };
-    players.push(newPlayer);
-    this.setPlayers(players);
-    return newPlayer;
+
+  getPlayerByCode(code) {
+    const normalized = code.trim().toUpperCase();
+    return this._players.find(p => p.code === normalized) || null;
   },
-  
-  updatePlayer(id, updates) {
-    let players = this.getPlayers();
-    players = players.map(p => p.id === id ? { ...p, ...updates } : p);
-    this.setPlayers(players);
+
+  async addPlayer(playerData) {
+    // Ensure we have a code – you can still use your existing UI or generate one here
+    if (!playerData.code) {
+      playerData.code = this.generateSecretCode();
+    }
+    playerData.code = playerData.code.toUpperCase();
+
+    const res = await fetch(`${SUPABASE_API}/players`, {
+      method: 'POST',
+      headers: SUPABASE_HEADERS,
+      body: JSON.stringify(playerData)
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      console.error('Failed to create player:', text);
+      throw new Error('Failed to create player');
+    }
+
+    const created = (await res.json())[0] || (await res.json());
+    // Supabase REST returns either the row or array depending on settings; handle both
+    if (Array.isArray(created)) {
+      this._players.push(created[0]);
+      return created[0];
+    } else {
+      this._players.push(created);
+      return created;
+    }
   },
-  
-  deletePlayer(id) {
-    let players = this.getPlayers();
-    players = players.filter(p => p.id !== id);
-    this.setPlayers(players);
+
+  async updatePlayer(id, updates) {
+    const res = await fetch(`${SUPABASE_API}/players?id=eq.${id}&select=*`, {
+      method: 'PATCH',
+      headers: SUPABASE_HEADERS,
+      body: JSON.stringify(updates)
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      console.error('Failed to update player:', text);
+      throw new Error('Failed to update player');
+    }
+
+    const updatedRows = await res.json();
+    const updated = Array.isArray(updatedRows) ? updatedRows[0] : updatedRows;
+
+    const idx = this._players.findIndex(p => String(p.id) === String(id));
+    if (idx !== -1 && updated) {
+      this._players[idx] = updated;
+    }
+    return updated;
   },
-  
+
+  async deletePlayer(id) {
+    const res = await fetch(`${SUPABASE_API}/players?id=eq.${id}`, {
+      method: 'DELETE',
+      headers: SUPABASE_HEADERS
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      console.error('Failed to delete player:', text);
+      throw new Error('Failed to delete player');
+    }
+
+    this._players = this._players.filter(p => String(p.id) !== String(id));
+  },
+
   generateSecretCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let code = '';
     for (let i = 0; i < 5; i++) {
       code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
+    code = code.toUpperCase();
+    if (this._players.some(p => p.code === code)) {
+      return this.generateSecretCode();
+    }
     return code;
-  },
-  
-  getDefaultPlayers() {
-    return [
-      {
-        id: '1',
-        code: 'ABC12',
-        firstName: 'Marcus',
-        lastName: 'Johnson',
-        position: 'Forward',
-        jerseyNumber: 9,
-        dateOfBirth: '2008-05-15',
-        metrics: {
-          technical: {
-            ballControl: { level: 7, comment: 'Good ball control, needs better first touch' },
-            ballStriking: { level: 6, comment: 'Decent shot power, practice accuracy' },
-            passing: { level: 7, comment: 'Good vision, accurate short passes' },
-            duels: { level: 6, comment: 'Works hard, can be more physical' }
-          },
-          mentality: {
-            emotionControl: { level: 7, comment: 'Stays calm during games' },
-            selfDevelopment: { level: 8, comment: 'Very dedicated, always improving' },
-            vocal: { level: 6, comment: 'Could lead more on field' },
-            performance: { level: 7, comment: 'Consistent performer' },
-            focus: { level: 7, comment: 'Good concentration' }
-          },
-          intelligence: {
-            anticipation: { level: 6, comment: 'Decent positioning' },
-            decisionMaking: { level: 7, comment: 'Makes smart choices under pressure' },
-            versatility: { level: 5, comment: 'Plays mainly as striker' },
-            spaceUsage: { level: 7, comment: 'Good movement off the ball' }
-          },
-          athleticism: {
-            agility: { level: 7, comment: 'Quick feet, good balance' },
-            speed: { level: 8, comment: 'Very fast, explosive' },
-            stamina: { level: 7, comment: 'Good endurance, can improve late game' }
-          }
-        },
-        assignedVideos: [
-          { id: '1', title: 'Finishing Drills', url: 'https://www.youtube.com/embed/dQw4w9WgXcQ', assignedDate: '2024-12-01' },
-          { id: '2', title: 'First Touch Techniques', url: 'https://www.youtube.com/embed/dQw4w9WgXcQ', assignedDate: '2024-12-05' }
-        ]
-      },
-      {
-        id: '2',
-        code: 'XYZ99',
-        firstName: 'David',
-        lastName: 'Miller',
-        position: 'Midfield',
-        jerseyNumber: 7,
-        dateOfBirth: '2007-08-22',
-        metrics: {
-          technical: {
-            ballControl: { level: 8, comment: 'Excellent dribbler' },
-            ballStriking: { level: 7, comment: 'Good shooting technique' },
-            passing: { level: 8, comment: 'Outstanding playmaker' },
-            duels: { level: 7, comment: 'Strong in challenges' }
-          },
-          mentality: {
-            emotionControl: { level: 8, comment: 'Very composed' },
-            selfDevelopment: { level: 9, comment: 'Natural leader' },
-            vocal: { level: 8, comment: 'Vocal leader on pitch' },
-            performance: { level: 8, comment: 'Always at his best' },
-            focus: { level: 8, comment: 'Excellent concentration' }
-          },
-          intelligence: {
-            anticipation: { level: 8, comment: 'Reads game exceptionally' },
-            decisionMaking: { level: 8, comment: 'Makes intelligent passes' },
-            versatility: { level: 7, comment: 'Can play multiple positions' },
-            spaceUsage: { level: 8, comment: 'Creates space for teammates' }
-          },
-          athleticism: {
-            agility: { level: 8, comment: 'Very agile and balanced' },
-            speed: { level: 7, comment: 'Good pace for a midfielder' },
-            stamina: { level: 9, comment: 'Outstanding fitness' }
-          }
-        },
-        assignedVideos: [
-          { id: '1', title: 'Midfield Positioning', url: 'https://www.youtube.com/embed/dQw4w9WgXcQ', assignedDate: '2024-12-03' }
-        ]
-      }
-    ];
-  },
-  
-  addVideo(playerId, videoData) {
-    const player = this.getPlayerById(playerId);
-    if (player) {
-      if (!player.assignedVideos) {
-        player.assignedVideos = [];
-      }
-      const newVideo = {
-        id: Date.now().toString(),
-        assignedDate: new Date().toISOString().split('T')[0],
-        ...videoData
-      };
-      player.assignedVideos.push(newVideo);
-      this.updatePlayer(playerId, player);
-      return newVideo;
-    }
-  },
-  
-  removeVideo(playerId, videoId) {
-    const player = this.getPlayerById(playerId);
-    if (player) {
-      player.assignedVideos = player.assignedVideos.filter(v => v.id !== videoId);
-      this.updatePlayer(playerId, player);
-    }
   }
 };
 

@@ -1,12 +1,12 @@
 
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - TrackerU</title>
-    <link rel="stylesheet" href="css/styles.css">
-    <style>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Admin Dashboard - TrackerU</title>
+        <link rel="stylesheet" href="css/styles.css">
+        <style>
         .dashboard-header {
             background: linear-gradient(135deg, var(--primary), #0f172a);
             color: white;
@@ -77,108 +77,123 @@
             display: block;
         }
     </style>
-</head>
-<body onload="Auth.checkAdminAuth()">
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="navbar-container">
-            <div class="navbar-brand">
-                <div class="navbar-brand-icon">⚽</div>
-                <span>TrackerU</span>
-            </div>
-            <ul class="navbar-menu">
-                <li><a href="index.html">Home</a></li>
-                <li><a href="admin-dashboard.html" class="active">Dashboard</a></li>
-                <li><a href="#" onclick="logoutAdmin()" style="cursor: pointer;">Logout</a></li>
-            </ul>
-        </div>
-    </nav>
-
-    <!-- Dashboard Header -->
-    <div class="dashboard-header">
-        <div class="container">
-            <h1>👋 Welcome Coach!</h1>
-            <p>Manage your players, metrics, and training content</p>
-        </div>
-    </div>
-
-    <div class="container">
-        <!-- Stats Section -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-number" id="totalPlayers">0</div>
-                <div class="stat-label">Total Players</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number" id="avgPerformance">0</div>
-                <div class="stat-label">Avg Performance Level</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number" id="totalVideos">0</div>
-                <div class="stat-label">Videos Assigned</div>
-            </div>
-        </div>
-
-        <!-- Tab Navigation -->
-        <div class="sidebar-tabs">
-            <button class="tab-btn active" onclick="switchTab('players-tab')">👥 Players</button>
-            <button class="tab-btn" onclick="switchTab('add-player-tab')">➕ Add Player</button>
-        </div>
-
-        <!-- Players Tab -->
-        <div id="players-tab" class="tab-content active">
-            <h2 style="margin-bottom: var(--space-lg);">Player Management</h2>
-            <div id="playersList"></div>
-        </div>
-
-        <!-- Add Player Tab -->
-        <div id="add-player-tab" class="tab-content">
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title">Add New Player</h2>
+    </head>
+    <body onload="Auth.checkAdminAuth()">
+        <!-- Navigation -->
+        <nav class="navbar">
+            <div class="navbar-container">
+                <div class="navbar-brand">
+                    <div class="navbar-brand-icon">⚽</div>
+                    <span>TrackerU</span>
                 </div>
-                <form id="addPlayerForm">
-                    <div class="grid grid-2">
-                        <div class="form-group">
-                            <label class="form-label">First Name</label>
-                            <input type="text" class="form-input" id="firstName" required>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Last Name</label>
-                            <input type="text" class="form-input" id="lastName" required>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Position</label>
-                            <input type="text" class="form-input" id="position" placeholder="e.g., Forward, Midfielder" required>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Jersey Number</label>
-                            <input type="number" class="form-input" id="jerseyNumber" min="1" max="99" required>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Date of Birth</label>
-                            <input type="date" class="form-input" id="dateOfBirth" required>
-                        </div>
+                <ul class="navbar-menu">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="admin-dashboard.html"
+                            class="active">Dashboard</a></li>
+                    <li><a href="#" onclick="logoutAdmin()"
+                            style="cursor: pointer;">Logout</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Dashboard Header -->
+        <div class="dashboard-header">
+            <div class="container">
+                <h1>👋 Welcome Coach!</h1>
+                <p>Manage your players, metrics, and training content</p>
+            </div>
+        </div>
+
+        <div class="container">
+            <!-- Stats Section -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalPlayers">0</div>
+                    <div class="stat-label">Total Players</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="avgPerformance">0</div>
+                    <div class="stat-label">Avg Performance Level</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalVideos">0</div>
+                    <div class="stat-label">Videos Assigned</div>
+                </div>
+            </div>
+
+            <!-- Tab Navigation -->
+            <div class="sidebar-tabs">
+                <button class="tab-btn active"
+                    onclick="switchTab('players-tab')">👥 Players</button>
+                <button class="tab-btn" onclick="switchTab('add-player-tab')">➕
+                    Add Player</button>
+            </div>
+
+            <!-- Players Tab -->
+            <div id="players-tab" class="tab-content active">
+                <h2 style="margin-bottom: var(--space-lg);">Player
+                    Management</h2>
+                <div id="playersList"></div>
+            </div>
+
+            <!-- Add Player Tab -->
+            <div id="add-player-tab" class="tab-content">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Add New Player</h2>
                     </div>
-                    <button type="submit" class="btn btn-primary">Add Player</button>
-                </form>
+                    <form id="addPlayerForm">
+                        <div class="grid grid-2">
+                            <div class="form-group">
+                                <label class="form-label">First Name</label>
+                                <input type="text" class="form-input"
+                                    id="firstName" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Last Name</label>
+                                <input type="text" class="form-input"
+                                    id="lastName" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Position</label>
+                                <input type="text" class="form-input"
+                                    id="position"
+                                    placeholder="e.g., Forward, Midfielder"
+                                    required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Jersey Number</label>
+                                <input type="number" class="form-input"
+                                    id="jerseyNumber" min="1" max="99" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Date of Birth</label>
+                                <input type="date" class="form-input"
+                                    id="dateOfBirth" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Add
+                            Player</button>
+                    </form>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- Player Details Modal -->
-    <div id="playerModal" class="modal">
-        <div class="modal-content" style="max-width: 800px; max-height: 95vh;">
-            <div class="modal-header">
-                <h2 id="modalPlayerName"></h2>
-                <button class="modal-close" onclick="UI.closeModal('playerModal')">&times;</button>
+        <!-- Player Details Modal -->
+        <div id="playerModal" class="modal">
+            <div class="modal-content"
+                style="max-width: 800px; max-height: 95vh;">
+                <div class="modal-header">
+                    <h2 id="modalPlayerName"></h2>
+                    <button class="modal-close"
+                        onclick="UI.closeModal('playerModal')">&times;</button>
+                </div>
+                <div id="playerDetails"></div>
             </div>
-            <div id="playerDetails"></div>
         </div>
-    </div>
 
-    <script src="js/app.js"></script>
-    <script>
+        <script src="js/app.js"></script>
+        <script>
         // Tab switching
         function switchTab(tabName) {
             document.querySelectorAll('.tab-content').forEach(tab => {
@@ -578,7 +593,7 @@
                         stamina: ''
                     }
                 }
-            };
+            }};
 
             // Build updated metrics object from the form
             const updatedMetrics = {};
@@ -613,8 +628,9 @@
             DataManager.updatePlayer(playerId, updatedData);
             UI.showAlert('Player updated successfully', 'success');
             UI.closeModal('playerModal');
-            loadPlayers();
-        }
+            DataManager.init().then (() => {
+                loadPlayers();
+            });
 
 
         function deletePlayer(playerId) {
@@ -650,48 +666,50 @@
         document.getElementById('addPlayerForm').addEventListener('submit', (e) => {
             e.preventDefault();
             
-            const player = DataManager.addPlayer({
-                firstName: document.getElementById('firstName').value,
-                lastName: document.getElementById('lastName').value,
-                position: document.getElementById('position').value,
-                jerseyNumber: parseInt(document.getElementById('jerseyNumber').value),
-                dateOfBirth: document.getElementById('dateOfBirth').value,
-                metrics: {
-                    technical: {
-                        ballControl: { level: 5, comment: '' },
-                        ballStriking: { level: 5, comment: '' },
-                        passing: { level: 5, comment: '' },
-                        duels: { level: 5, comment: '' }
-                    },
-                    mentality: {
-                        emotionControl: { level: 5, comment: '' },
-                        selfDevelopment: { level: 5, comment: '' },
-                        vocal: { level: 5, comment: '' },
-                        performance: { level: 5, comment: '' },
-                        focus: { level: 5, comment: '' }
-                    },
-                    intelligence: {
-                        anticipation: { level: 5, comment: '' },
-                        decisionMaking: { level: 5, comment: '' },
-                        versatility: { level: 5, comment: '' },
-                        spaceUsage: { level: 5, comment: '' }
-                    },
-                    athleticism: {
-                        agility: { level: 5, comment: '' },
-                        speed: { level: 5, comment: '' },
-                        stamina: { level: 5, comment: '' }
-                    }
-                },
-                assignedVideos: []
-            });
-            
-            UI.showAlert(`Player ${player.firstName} ${player.lastName} added! Code: ${player.code}`, 'success');
-            document.getElementById('addPlayerForm').reset();
-            switchTab('players-tab');
-            loadPlayers();
-        });
+            document.getElementById('addPlayerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const player = await DataManager.addPlayer({
+        firstName: document.getElementById('firstName').value,
+        lastName: document.getElementById('lastName').value,
+        position: document.getElementById('position').value,
+        jerseyNumber: parseInt(document.getElementById('jerseyNumber').value),
+        dateOfBirth: document.getElementById('dateOfBirth').value,
+        metrics: {
+            technical: {
+                ballControl: { level: 5, comment: '' },
+                ballStriking: { level: 5, comment: '' },
+                passing: { level: 5, comment: '' },
+                duels: { level: 5, comment: '' }
+            },
+            mentality: {
+                emotionControl: { level: 5, comment: '' },
+                selfDevelopment: { level: 5, comment: '' },
+                vocal: { level: 5, comment: '' },
+                performance: { level: 5, comment: '' },
+                focus: { level: 5, comment: '' }
+            },
+            intelligence: {
+                anticipation: { level: 5, comment: '' },
+                decisionMaking: { level: 5, comment: '' },
+                versatility: { level: 5, comment: '' },
+                spaceUsage: { level: 5, comment: '' }
+            },
+            athleticism: {
+                agility: { level: 5, comment: '' },
+                speed: { level: 5, comment: '' },
+                stamina: { level: 5, comment: '' }
+            }
+        },
+        assignedVideos: []
+    });
+    
+    UI.showAlert(`Player ${player.firstName} ${player.lastName} added! Code: ${player.code}`, 'success');
+    document.getElementById('addPlayerForm').reset();
+    switchTab('players-tab');
+    loadPlayers();
+});
 
-        loadPlayers();
-    </script>
-</body>
+</script>
+    </body>
 </html>
