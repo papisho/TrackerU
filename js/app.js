@@ -2,8 +2,8 @@
 // TrackerU - Main Application Logic
 
 // Supabase configuration
-const SUPABASE_URL = 'https://axrqkbdgcvsyoxlbuwoh.supabase.co';   // <- paste from Supabase
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF4cnFrYmRnY3ZzeW94bGJ1d29oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU0OTU4MTcsImV4cCI6MjA4MTA3MTgxN30.kTP1WkLi9dkU5VB6egAF6IehYVURVV2inIju_2ckTHQ';        // <- paste anon key
+const SUPABASE_URL = 'https://...';   // <- paste from Supabase
+const SUPABASE_ANON_KEY = '...';        // <- paste anon key
 
 const SUPABASE_API = `${SUPABASE_URL}/rest/v1`;
 const SUPABASE_HEADERS = {

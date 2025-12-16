@@ -1,0 +1,107 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Request Admin Access - TrackerU</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        /* Styles specific to the admin request form */
+        .request-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: var(--space-2xl) var(--space-lg);
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+        }
+        .request-header {
+            text-align: center;
+            margin-bottom: var(--space-lg);
+        }
+        .request-header h1 {
+            margin-bottom: var(--space-sm);
+        }
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand">
+                <div class="navbar-brand-icon">⚽</div>
+                <span>TrackerU</span>
+            </div>
+            <ul class="navbar-menu">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="player-access.html">Player Access</a></li>
+                <li><a href="admin-login.html">Admin Login</a></li>
+                <li><a href="request-admin.html" class="active">Request Admin Access</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Content -->
+    <div class="container" style="padding: var(--space-2xl) 0;">
+        <div class="request-container">
+            <div class="request-header">
+                <h1>Request Admin Access</h1>
+                <p style="color: var(--gray-600);">Complete the form below to request a new coach account. We'll review your request and send you an invite.</p>
+            </div>
+            <form id="adminRequestForm">
+                <div class="form-group">
+                    <label class="form-label">First Name</label>
+                    <input type="text" class="form-input" id="reqFirstName" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Last Name</label>
+                    <input type="text" class="form-input" id="reqLastName" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Team You Coach</label>
+                    <input type="text" class="form-input" id="reqTeam" placeholder="e.g., U14 Boys" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Additional Notes</label>
+                    <textarea class="form-input" id="reqNotes" rows="4" placeholder="Tell us anything else you'd like us to know..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" onclick="window.history.back()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Submit Request</button>
+                </div>
+            </form>
+        </div>
+        <div id="requestSuccess" class="alert alert-success" style="display: none; margin-top: var(--space-lg);"></div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        // Handle the admin access request form submission
+        document.getElementById('adminRequestForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const firstName = document.getElementById('reqFirstName').value.trim();
+            const lastName = document.getElementById('reqLastName').value.trim();
+            const team = document.getElementById('reqTeam').value.trim();
+            const notes = document.getElementById('reqNotes').value.trim();
+
+            try {
+                await DataManager.submitAdminRequest({ firstName, lastName, team, notes });
+                document.getElementById('requestSuccess').textContent = 'Your request has been submitted successfully. We will reach out to you via email once your account is created.';
+                document.getElementById('requestSuccess').style.display = 'block';
+                document.getElementById('adminRequestForm').reset();
+            } catch (err) {
+                UI.showAlert('Failed to submit request. Please try again later.', 'danger');
+                console.error(err);
+            }
+        });
+    </script>
+</body>
+</html>
