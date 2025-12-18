@@ -125,23 +125,32 @@
     <script>
         document.getElementById('accessForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const code = document.getElementById('playerCode').value.toUpperCase().trim();
+
+            const input = document.getElementById('playerCode');
+            const code = input.value.toUpperCase().trim();
             const errorAlert = document.getElementById('errorAlert');
+
             errorAlert.style.display = 'none';
 
-            await DataManager.init(); // loads players for admins (does nothing for anon)
+            try {
+                const player = await DataManager.getPlayerByCode(code);
 
-            // Use async lookup so the RPC is called if needed
-            const player = await DataManager.getPlayerByCode(code);
-            if (player) {
+                if (player) {
                 Auth.setCurrentPlayerCode(code);
                 window.location.href = 'player-profile.html';
-            } else {
+                } else {
                 errorAlert.textContent = 'Invalid player code. Please check and try again.';
                 errorAlert.style.display = 'block';
-                document.getElementById('playerCode').value = '';
+                input.value = '';
+                input.focus();
+                }
+            } catch (err) {
+                console.error(err);
+                errorAlert.textContent = 'Something went wrong. Please try again.';
+                errorAlert.style.display = 'block';
             }
-        });
+    });
+
 
     </script>
 </body>
