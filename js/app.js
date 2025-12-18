@@ -157,10 +157,40 @@ const DataManager = {
     return this._players.find(p => String(p.id) === String(id)) || null;
   },
 
-  getPlayerByCode(code) {
-    const normalized = String(code || '').trim().toUpperCase();
-    return this._players.find(p => String(p.code).toUpperCase() === normalized) || null;
-  },
+  /**
+ * Lookup a player by their secret code. First searches the in-memory
+ * _players cache (for admins), then falls back to calling the
+ * get_player_by_code RPC for anonymous users.
+ */
+async getPlayerByCode(code) {
+  const normalized = String(code || '').trim().toUpperCase();
+  if (!normalized) return null;
+
+  // If cache has players (admin logged in), search locally
+  if (Array.isArray(this._players) && this._players.length > 0) {
+    const localMatch = this._players.find(p => p.code === normalized);
+    if (localMatch) return localMatch;
+  }
+
+  // Otherwise call the Supabase RPC
+  try {
+    const res = await fetch(`${SUPABASE_API}/rpc/get_player_by_code`, {
+      method: 'POST',
+      headers: SUPABASE_HEADERS,
+      body: JSON.stringify({ code_input: normalized })
+    });
+    if (!res.ok) {
+      console.error('RPC get_player_by_code failed:', await res.text());
+      return null;
+    }
+    const data = await res.json();
+    return Array.isArray(data) && data.length > 0 ? data[0] : null;
+  } catch (err) {
+    console.error('Error during RPC get_player_by_code:', err);
+    return null;
+  }
+},
+
 
   generateSecretCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';

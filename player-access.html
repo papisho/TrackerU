@@ -123,14 +123,16 @@
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
         <script src="js/app.js"></script>
     <script>
-        document.getElementById('accessForm').addEventListener('submit', (e) => {
+        document.getElementById('accessForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
             const code = document.getElementById('playerCode').value.toUpperCase().trim();
             const errorAlert = document.getElementById('errorAlert');
-            
-            const player = DataManager.getPlayerByCode(code);
-            
+            errorAlert.style.display = 'none';
+
+            await DataManager.init(); // loads players for admins (does nothing for anon)
+
+            // Use async lookup so the RPC is called if needed
+            const player = await DataManager.getPlayerByCode(code);
             if (player) {
                 Auth.setCurrentPlayerCode(code);
                 window.location.href = 'player-profile.html';
@@ -140,6 +142,7 @@
                 document.getElementById('playerCode').value = '';
             }
         });
+
     </script>
 </body>
 </html>

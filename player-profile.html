@@ -208,8 +208,8 @@
             window.location.href = 'player-access.html';
         }
 
-        function loadPlayerProfile() {
-            const player = DataManager.getPlayerByCode(playerCode);
+        async function loadPlayerProfile() {
+            const player = await DataManager.getPlayerByCode(playerCode);
             
             if (!player) {
                 window.location.href = 'player-access.html';
