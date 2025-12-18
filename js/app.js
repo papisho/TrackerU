@@ -1,251 +1,185 @@
 
-// TrackerU - Main Application Logic
+// TrackerU - Supabase-enabled App Logic
+// Requires: <script src="https://unpkg.com/@supabase/supabase-js@2"></script> BEFORE this file
 
-// Supabase configuration
-const SUPABASE_URL = 'https://axrqkbdgcvsyoxlbuwoh.supabase.co';   // <- paste from Supabase
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF4cnFrYmRnY3ZzeW94bGJ1d29oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU0OTU4MTcsImV4cCI6MjA4MTA3MTgxN30.kTP1WkLi9dkU5VB6egAF6IehYVURVV2inIju_2ckTHQ';        // <- paste anon key
+// 1) Put your real Supabase Project URL + anon key here (Project Settings -> API)
+const SUPABASE_URL = "https://axrqkbdgcvsyoxlbuwoh.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF4cnFrYmRnY3ZzeW94bGJ1d29oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU0OTU4MTcsImV4cCI6MjA4MTA3MTgxN30.kTP1WkLi9dkU5VB6egAF6IehYVURVV2inIju_2ckTHQ";
 
-const SUPABASE_API = `${SUPABASE_URL}/rest/v1`;
-const SUPABASE_HEADERS = {
-  apikey: SUPABASE_ANON_KEY,
-  Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-  'Content-Type': 'application/json'
-};
+// Create Supabase client (this enables Auth + DB)
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-
-// Data Management System
+// --------------------
+// Data Management
+// --------------------
 const DataManager = {
-  _players: [],
-  _initialized: false,
+  // Admin dashboard list (works only when logged in; RLS will restrict by admin_id)
+  async fetchPlayers() {
+    const { data, error } = await supabaseClient
+      .from("players")
+      .select("*")
+      .order("created_at", { ascending: false });
 
-  async init() {
-    if (this._initialized) return;
-    try {
-      const res = await fetch(`${SUPABASE_API}/players?select=*`, {
-        headers: SUPABASE_HEADERS
-      });
-
-      // If anon is blocked by RLS, this can fail. That's OK.
-      if (!res.ok) {
-        // Keep quiet-ish; player access uses RPC now.
-        console.warn('Players list fetch blocked or failed (this is expected for anon with RLS).');
-        this._players = [];
-      } else {
-        this._players = await res.json();
-      }
-
-      this._initialized = true;
-    } catch (err) {
-      console.warn('Players list fetch error (expected for anon with RLS).', err);
-      this._players = [];
-      this._initialized = true;
-    }
+    if (error) throw error;
+    return data || [];
   },
 
-  // Local cache helpers
-  getPlayers() {
-    return this._players;
+  async getPlayerById(id) {
+    const { data, error } = await supabaseClient
+      .from("players")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data || null;
   },
 
-  getPlayerById(id) {
-    return this._players.find(p => String(p.id) === String(id)) || null;
-  },
-
-  /**
-   * Player lookup by secret code.
-   * IMPORTANT: Uses RPC so it works for anon users (players/parents)
-   * even when RLS blocks direct SELECT on players.
-   */
+  // ✅ Player/parent lookup by code (works for anon) via RPC
   async getPlayerByCode(code) {
-    const normalized = String(code || '').trim().toUpperCase();
+    const normalized = String(code || "").trim().toUpperCase();
     if (!normalized) return null;
 
-    // Call the RPC: public.get_player_by_code(code_input text)
-    const res = await fetch(`${SUPABASE_API}/rpc/get_player_by_code`, {
-      method: 'POST',
-      headers: SUPABASE_HEADERS,
-      body: JSON.stringify({ code_input: normalized })
-    });
+    const { data, error } = await supabaseClient
+      .rpc("get_player_by_code", { code_input: normalized });
 
-    if (!res.ok) {
-      const text = await res.text();
-      console.error('RPC get_player_by_code failed:', text);
+    if (error) {
+      console.error("RPC get_player_by_code error:", error.message);
       return null;
     }
 
-    const data = await res.json();
-    // RETURNS TABLE -> array of rows
-    return Array.isArray(data) && data.length > 0 ? data[0] : null;
+    // RETURNS TABLE -> array
+    return Array.isArray(data) && data.length ? data[0] : null;
   },
 
+  // Admin creates player: must include admin_id = auth.uid() to satisfy RLS
   async addPlayer(playerData) {
-    // Ensure we have a code – you can still use your existing UI or generate one here
-    if (!playerData.code) {
-      playerData.code = this.generateSecretCode();
-    }
-    playerData.code = playerData.code.toUpperCase();
+    const user = await Auth.getUser();
+    if (!user) throw new Error("Not logged in.");
 
-    const res = await fetch(`${SUPABASE_API}/players`, {
-      method: 'POST',
-      headers: SUPABASE_HEADERS,
-      body: JSON.stringify(playerData)
-    });
+    const payload = {
+      ...playerData,
+      code: (playerData.code || this.generateSecretCode()).toUpperCase(),
+      admin_id: user.id,
+      assignedVideos: Array.isArray(playerData.assignedVideos) ? playerData.assignedVideos : [],
+      metrics: playerData.metrics || {},
+    };
 
-    if (!res.ok) {
-      const text = await res.text();
-      console.error('Failed to create player:', text);
-      throw new Error('Failed to create player');
-    }
+    const { data, error } = await supabaseClient
+      .from("players")
+      .insert(payload)
+      .select("*")
+      .single();
 
-    // Prefer single-pass JSON parse
-    const createdRows = await res.json();
-    const created = Array.isArray(createdRows) ? createdRows[0] : createdRows;
-
-    if (created) this._players.push(created);
-    return created;
+    if (error) throw error;
+    return data;
   },
 
   async updatePlayer(id, updates) {
-    const res = await fetch(`${SUPABASE_API}/players?id=eq.${id}&select=*`, {
-      method: 'PATCH',
-      headers: SUPABASE_HEADERS,
-      body: JSON.stringify(updates)
-    });
+    const { data, error } = await supabaseClient
+      .from("players")
+      .update(updates)
+      .eq("id", id)
+      .select("*")
+      .single();
 
-    if (!res.ok) {
-      const text = await res.text();
-      console.error('Failed to update player:', text);
-      throw new Error('Failed to update player');
-    }
-
-    const updatedRows = await res.json();
-    const updated = Array.isArray(updatedRows) ? updatedRows[0] : updatedRows;
-
-    const idx = this._players.findIndex(p => String(p.id) === String(id));
-    if (idx !== -1 && updated) {
-      this._players[idx] = updated;
-    }
-    return updated;
+    if (error) throw error;
+    return data;
   },
 
   async deletePlayer(id) {
-    const res = await fetch(`${SUPABASE_API}/players?id=eq.${id}`, {
-      method: 'DELETE',
-      headers: SUPABASE_HEADERS
-    });
+    const { error } = await supabaseClient
+      .from("players")
+      .delete()
+      .eq("id", id);
 
-    if (!res.ok) {
-      const text = await res.text();
-      console.error('Failed to delete player:', text);
-      throw new Error('Failed to delete player');
-    }
+    if (error) throw error;
+  },
 
-    this._players = this._players.filter(p => String(p.id) !== String(id));
+  async addVideo(playerId, video) {
+    const player = await this.getPlayerById(playerId);
+    if (!player) throw new Error("Player not found");
+
+    const assignedVideos = Array.isArray(player.assignedVideos) ? player.assignedVideos : [];
+    const newVideo = {
+      id: crypto.randomUUID(),
+      title: video.title || "Training Video",
+      url: video.url,
+      created_at: new Date().toISOString(),
+    };
+
+    assignedVideos.push(newVideo);
+    return await this.updatePlayer(playerId, { assignedVideos });
+  },
+
+  async removeVideo(playerId, videoId) {
+    const player = await this.getPlayerById(playerId);
+    if (!player) throw new Error("Player not found");
+
+    const assignedVideos = (player.assignedVideos || []).filter(v => v.id !== videoId);
+    return await this.updatePlayer(playerId, { assignedVideos });
   },
 
   generateSecretCode() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let code = '';
-    for (let i = 0; i < 5; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    code = code.toUpperCase();
-    if (this._players.some(p => p.code === code)) {
-      return this.generateSecretCode();
-    }
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let code = "";
+    for (let i = 0; i < 5; i++) code += chars[Math.floor(Math.random() * chars.length)];
     return code;
   }
 };
 
-// Authentication System
+// --------------------
+// Auth
+// --------------------
 const Auth = {
-  isAdminLoggedIn() {
-    return sessionStorage.getItem('adminLoggedIn') === 'true';
-  },
-
-  // NOTE: Your admin login page may already use Supabase Auth and not this method.
-  // Keeping it here doesn't affect player portal.
-  loginAdmin(username, password) {
-    // Placeholder (if you still have older admin logic somewhere)
-    // Prefer Supabase Auth on the admin-login page.
-    return false;
-  },
-
-  logoutAdmin() {
-    sessionStorage.removeItem('adminLoggedIn');
-  },
-
-  checkAdminAuth() {
-    if (!this.isAdminLoggedIn()) {
-      window.location.href = 'admin-login.html';
-    }
-  },
-
-  getCurrentPlayerCode() {
-    return sessionStorage.getItem('currentPlayerCode');
-  },
-
-  setCurrentPlayerCode(code) {
-    sessionStorage.setItem('currentPlayerCode', code);
-  },
-
-  clearCurrentPlayerCode() {
-    sessionStorage.removeItem('currentPlayerCode');
-  }
-};
-
-// UI Helper Functions
-const UI = {
-  showAlert(message, type = 'info') {
-    const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type}`;
-    alertDiv.textContent = message;
-    alertDiv.style.position = 'fixed';
-    alertDiv.style.top = '20px';
-    alertDiv.style.right = '20px';
-    alertDiv.style.zIndex = '9999';
-    alertDiv.style.maxWidth = '400px';
-
-    document.body.appendChild(alertDiv);
-
-    setTimeout(() => {
-      alertDiv.remove();
-    }, 4000);
-  },
-
-  openModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) modal.classList.add('show');
-  },
-
-  closeModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) modal.classList.remove('show');
-  },
-
-  getMetricRatingColor(level) {
-    if (level >= 8) return '#2ecc71';
-    if (level >= 6) return '#f39c12';
-    return '#e74c3c';
-  },
-
-  getMetricRatingBadgeClass(level) {
-    if (level >= 8) return 'badge-success';
-    if (level >= 6) return 'badge-warning';
-    return 'badge-danger';
-  },
-
-  formatDate(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
+  async loginAdmin(email, password) {
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
+      email: String(email || "").trim(),
+      password: String(password || "").trim(),
     });
+
+    if (error) return { ok: false, error: error.message };
+    return { ok: true, data };
+  },
+
+  async logoutAdmin() {
+    await supabaseClient.auth.signOut();
+  },
+
+  async getUser() {
+    const { data } = await supabaseClient.auth.getUser();
+    return data?.user || null;
+  },
+
+  async requireAdmin() {
+    const user = await this.getUser();
+    if (!user) window.location.href = "admin-login.html";
+  },
+
+  // Player session (code-based)
+  getCurrentPlayerCode() {
+    return sessionStorage.getItem("currentPlayerCode");
+  },
+  setCurrentPlayerCode(code) {
+    sessionStorage.setItem("currentPlayerCode", code);
+  },
+  clearCurrentPlayerCode() {
+    sessionStorage.removeItem("currentPlayerCode");
   }
 };
 
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', () => {
-  DataManager.init();
-});
+// --------------------
+// UI helpers (keep minimal)
+// --------------------
+const UI = {
+  formatDate(dateString) {
+    const d = new Date(dateString);
+    return isNaN(d.getTime()) ? "-" : d.toLocaleDateString();
+  }
+};
+
+// Expose globally for inline scripts
+window.DataManager = DataManager;
+window.Auth = Auth;
+window.UI = UI;
+window.supabaseClient = supabaseClient;
