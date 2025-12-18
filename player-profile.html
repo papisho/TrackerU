@@ -1,12 +1,13 @@
 
+
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Player Profile - TrackerU</title>
-        <link rel="stylesheet" href="css/styles.css">
-        <style>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Player Profile - TrackerU</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
         .profile-header {
             background: linear-gradient(135deg, var(--primary), #0f172a);
             color: white;
@@ -133,105 +134,75 @@
             display: block;
         }
     </style>
-    </head>
-    <body>
-        <!-- Navigation -->
-        <nav class="navbar">
-            <div class="navbar-container">
-                <div class="navbar-brand">
-                    <div class="navbar-brand-icon">⚽</div>
-                    <span>TrackerU</span>
-                </div>
-                <ul class="navbar-menu">
-                    <li><a href="index.html">Home</a></li>
-                    <li><a href="player-access.html">Back to Access</a></li>
-                    <li><a href="#" onclick="logoutPlayer()"
-                            style="cursor: pointer;">Logout</a></li>
-                </ul>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand">
+                <div class="navbar-brand-icon">⚽</div>
+                <span>TrackerU</span>
             </div>
-        </nav>
-
-        <!-- Profile Header -->
-        <div class="profile-header">
-            <div class="container">
-                <h1 id="playerName">Loading...</h1>
-                <p id="playerDetails"
-                    style="color: rgba(255,255,255,0.9); margin: 0;"></p>
-            </div>
+            <ul class="navbar-menu">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="player-access.html">Back to Access</a></li>
+                <li><a href="#" onclick="logoutPlayer()" style="cursor: pointer;">Logout</a></li>
+            </ul>
         </div>
+    </nav>
 
+    <!-- Profile Header -->
+    <div class="profile-header">
         <div class="container">
-            <!-- Player Info -->
-            <div class="profile-info">
-                <div class="info-card">
-                    <div class="info-label">Position</div>
-                    <div class="info-value" id="position">-</div>
-                </div>
-                <div class="info-card">
-                    <div class="info-label">Jersey Number</div>
-                    <div class="info-value" id="jerseyNumber">-</div>
-                </div>
-                <div class="info-card">
-                    <div class="info-label">Date of Birth</div>
-                    <div class="info-value" id="dob">-</div>
-                </div>
-                <div class="info-card">
-                    <div class="info-label">Overall Performance</div>
-                    <div class="info-value" id="overallPerformance">-</div>
-                </div>
+            <h1 id="playerName">Loading...</h1>
+            <p id="playerDetails" style="color: rgba(255,255,255,0.9); margin: 0;"></p>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Player Info -->
+        <div class="profile-info">
+            <div class="info-card">
+                <div class="info-label">Position</div>
+                <div class="info-value" id="position">-</div>
             </div>
-
-            <div class="profile-info">
-                <!-- ... other info items ... -->
-                <div class="info-item">
-                    <div class="info-label">Overall Performance</div>
-                    <div class="info-value" id="overallPerformance">-</div>
-                </div>
+            <div class="info-card">
+                <div class="info-label">Jersey Number</div>
+                <div class="info-value" id="jerseyNumber">-</div>
             </div>
-
-            <!-- AI Development Summary -->
-            <section class="metric-section"
-                style="margin-top: var(--space-lg);">
-                <h3 style="margin-bottom: var(--space-md);">AI Development
-                    Summary (beta)</h3>
-                <p id="aiSummaryOverall"
-                    style="margin-bottom: var(--space-sm); color: var(--gray-7);"></p>
-                <p style="margin-bottom: var(--space-xs);">
-                    <strong>Strengths:</strong>
-                    <span id="aiSummaryStrengths"></span>
-                </p>
-                <p>
-                    <strong>Focus areas:</strong>
-                    <span id="aiSummaryFocus"></span>
-                </p>
-            </section>
-
-            <!-- Tabs -->
-            <div class="tabs">
-                <button class="tab-btn active"
-                    onclick="switchTab('metrics-tab')">📊 Performance
-                    Metrics</button>
-                <button class="tab-btn" onclick="switchTab('videos-tab')">🎬
-                    Training Videos</button>
+            <div class="info-card">
+                <div class="info-label">Date of Birth</div>
+                <div class="info-value" id="dob">-</div>
             </div>
-
-            <!-- Metrics Tab -->
-            <div id="metrics-tab" class="tab-pane active">
-                <div id="metricsContainer"></div>
-            </div>
-
-            <!-- Videos Tab -->
-            <div id="videos-tab" class="tab-pane">
-                <div class="metric-section">
-                    <h3 style="margin-bottom: var(--space-lg);">🎬 Assigned
-                        Training Videos</h3>
-                    <div id="videosContainer"></div>
-                </div>
+            <div class="info-card">
+                <div class="info-label">Overall Performance</div>
+                <div class="info-value" id="overallPerformance">-</div>
             </div>
         </div>
 
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('metrics-tab')">📊 Performance Metrics</button>
+            <button class="tab-btn" onclick="switchTab('videos-tab')">🎬 Training Videos</button>
+        </div>
+
+        <!-- Metrics Tab -->
+        <div id="metrics-tab" class="tab-pane active">
+            <div id="metricsContainer"></div>
+        </div>
+
+        <!-- Videos Tab -->
+        <div id="videos-tab" class="tab-pane">
+            <div class="metric-section">
+                <h3 style="margin-bottom: var(--space-lg);">🎬 Assigned Training Videos</h3>
+                <div id="videosContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
         <script src="js/app.js"></script>
-        <script>
+    <script>
         const playerCode = Auth.getCurrentPlayerCode();
         if (!playerCode) {
             window.location.href = 'player-access.html';
@@ -264,18 +235,6 @@
             
             const avgLevel = totalMetrics > 0 ? Math.round(totalLevel / totalMetrics) : 0;
             document.getElementById('overallPerformance').textContent = `${avgLevel}/10`;
-
-            // AI Development Summary (player-facing)
-            const aiSummary = AI.generatePlayerSummary(player);
-            const overallEl = document.getElementById('aiSummaryOverall');
-            const strengthsEl = document.getElementById('aiSummaryStrengths');
-            const focusEl = document.getElementById('aiSummaryFocus');
-
-            if (overallEl && strengthsEl && focusEl) {
-                overallEl.textContent = aiSummary.overallText;
-                strengthsEl.textContent = aiSummary.strengthsText;
-                focusEl.textContent = aiSummary.focusText;
-            }
 
             loadMetrics(player);
             loadVideos(player);
@@ -378,10 +337,8 @@
             Auth.clearCurrentPlayerCode();
             window.location.href = 'player-access.html';
         }
-        DataManager.init().then (() => {
-            loadPlayerProfile();
-        });
-        
+
+        loadPlayerProfile();
     </script>
-    </body>
+</body>
 </html>
