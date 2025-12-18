@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -100,7 +99,9 @@
                     </p>
                 </div>
 
-                <button type="submit" class="btn btn-primary" style="width: 100%; margin-bottom: var(--space-md);">Access Profile</button>
+                <button id="accessBtn" type="submit" class="btn btn-primary" style="width: 100%; margin-bottom: var(--space-md);">
+                    Access Profile
+                </button>
             </form>
 
             <div id="errorAlert" class="alert alert-danger" style="display: none;"></div>
@@ -120,24 +121,39 @@
         </div>
     </div>
 
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-        <script src="js/app.js"></script>
+    <script src="js/app.js"></script>
     <script>
-        document.getElementById('accessForm').addEventListener('submit', (e) => {
+        document.getElementById('accessForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
-            const code = document.getElementById('playerCode').value.toUpperCase().trim();
+
+            const input = document.getElementById('playerCode');
+            const code = input.value.toUpperCase().trim();
             const errorAlert = document.getElementById('errorAlert');
-            
-            const player = DataManager.getPlayerByCode(code);
-            
-            if (player) {
-                Auth.setCurrentPlayerCode(code);
-                window.location.href = 'player-profile.html';
-            } else {
-                errorAlert.textContent = 'Invalid player code. Please check and try again.';
+            const btn = document.getElementById('accessBtn');
+
+            errorAlert.style.display = 'none';
+            btn.disabled = true;
+            btn.textContent = 'Checking...';
+
+            try {
+                const player = await DataManager.getPlayerByCode(code);
+
+                if (player) {
+                    Auth.setCurrentPlayerCode(code);
+                    window.location.href = 'player-profile.html';
+                } else {
+                    errorAlert.textContent = 'Invalid player code. Please check and try again.';
+                    errorAlert.style.display = 'block';
+                    input.value = '';
+                    input.focus();
+                }
+            } catch (err) {
+                console.error(err);
+                errorAlert.textContent = 'Something went wrong. Please try again.';
                 errorAlert.style.display = 'block';
-                document.getElementById('playerCode').value = '';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Access Profile';
             }
         });
     </script>

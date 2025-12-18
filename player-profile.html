@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,133 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Player Profile - TrackerU</title>
     <link rel="stylesheet" href="css/styles.css">
-    <style>
-        .profile-header {
-            background: linear-gradient(135deg, var(--primary), #0f172a);
-            color: white;
-            padding: var(--space-2xl) 0;
-            margin-bottom: var(--space-xl);
-        }
-        
-        .profile-info {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: var(--space-lg);
-            margin-bottom: var(--space-xl);
-        }
-        
-        .info-card {
-            background: white;
-            padding: var(--space-lg);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-md);
-        }
-        
-        .info-label {
-            color: var(--gray-500);
-            font-size: var(--font-size-sm);
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-        
-        .info-value {
-            font-size: var(--font-size-lg);
-            font-weight: 700;
-            color: var(--gray-900);
-            margin-top: var(--space-sm);
-        }
-        
-        .metric-section {
-            background: white;
-            padding: var(--space-lg);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-md);
-            margin-bottom: var(--space-lg);
-        }
-        
-        .metric-item {
-            padding: var(--space-md);
-            background-color: var(--gray-50);
-            border-radius: var(--radius-md);
-            margin-bottom: var(--space-md);
-        }
-        
-        .metric-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: var(--space-sm);
-        }
-        
-        .metric-name {
-            font-weight: 600;
-            color: var(--gray-900);
-        }
-        
-        .metric-level {
-            font-weight: 700;
-            padding: 4px 12px;
-            border-radius: var(--radius-full);
-            color: white;
-            font-size: var(--font-size-sm);
-        }
-        
-        .metric-comment {
-            color: var(--gray-600);
-            font-size: var(--font-size-sm);
-            margin-top: var(--space-sm);
-            font-style: italic;
-        }
-        
-        .video-card {
-            background-color: var(--gray-50);
-            padding: var(--space-lg);
-            border-radius: var(--radius-md);
-            margin-bottom: var(--space-md);
-            border-left: 4px solid var(--secondary);
-        }
-        
-        .video-title {
-            font-weight: 600;
-            margin-bottom: var(--space-sm);
-        }
-        
-        .video-date {
-            font-size: var(--font-size-sm);
-            color: var(--gray-500);
-        }
-        
-        .tabs {
-            display: flex;
-            gap: var(--space-md);
-            margin-bottom: var(--space-lg);
-            border-bottom: 2px solid var(--gray-200);
-        }
-        
-        .tab-btn {
-            background: none;
-            border: none;
-            padding: var(--space-md);
-            border-bottom: 3px solid transparent;
-            font-weight: 600;
-            cursor: pointer;
-            color: var(--gray-600);
-            transition: var(--transition);
-        }
-        
-        .tab-btn.active {
-            color: var(--primary);
-            border-bottom-color: var(--primary);
-        }
-        
-        .tab-pane {
-            display: none;
-        }
-        
-        .tab-pane.active {
-            display: block;
-        }
-    </style>
 </head>
 <body>
     <!-- Navigation -->
@@ -145,38 +17,45 @@
             </div>
             <ul class="navbar-menu">
                 <li><a href="index.html">Home</a></li>
-                <li><a href="player-access.html">Back to Access</a></li>
-                <li><a href="#" onclick="logoutPlayer()" style="cursor: pointer;">Logout</a></li>
+                <li><a href="player-access.html">Player Access</a></li>
+                <li><a href="admin-login.html">Admin Login</a></li>
             </ul>
         </div>
     </nav>
 
-    <!-- Profile Header -->
-    <div class="profile-header">
-        <div class="container">
-            <h1 id="playerName">Loading...</h1>
-            <p id="playerDetails" style="color: rgba(255,255,255,0.9); margin: 0;"></p>
-        </div>
-    </div>
+    <div class="container" style="padding-top: var(--space-xl); padding-bottom: var(--space-2xl);">
+        <!-- Player Header -->
+        <div class="card" style="margin-bottom: var(--space-xl);">
+            <div class="player-header">
+                <div class="player-avatar">👤</div>
+                <div class="player-info">
+                    <h1 id="playerName">Player Name</h1>
+                    <p id="playerDetails">Position | Jersey #</p>
+                </div>
+                <div class="player-performance">
+                    <div class="performance-score" id="overallPerformance">0/10</div>
+                    <div class="performance-label">Overall Performance</div>
+                </div>
+            </div>
 
-    <div class="container">
-        <!-- Player Info -->
-        <div class="profile-info">
-            <div class="info-card">
-                <div class="info-label">Position</div>
-                <div class="info-value" id="position">-</div>
-            </div>
-            <div class="info-card">
-                <div class="info-label">Jersey Number</div>
-                <div class="info-value" id="jerseyNumber">-</div>
-            </div>
-            <div class="info-card">
-                <div class="info-label">Date of Birth</div>
-                <div class="info-value" id="dob">-</div>
-            </div>
-            <div class="info-card">
-                <div class="info-label">Overall Performance</div>
-                <div class="info-value" id="overallPerformance">-</div>
+            <!-- Player Details Grid -->
+            <div class="player-details-grid">
+                <div class="detail-item">
+                    <span class="detail-label">Position</span>
+                    <span class="detail-value" id="position">-</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Jersey Number</span>
+                    <span class="detail-value" id="jerseyNumber">-</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Date of Birth</span>
+                    <span class="detail-value" id="dob">-</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Player Code</span>
+                    <span class="detail-value" id="playerCodeDisplay">-</span>
+                </div>
             </div>
         </div>
 
@@ -200,39 +79,53 @@
         </div>
     </div>
 
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-        <script src="js/app.js"></script>
+    <script src="js/app.js"></script>
     <script>
         const playerCode = Auth.getCurrentPlayerCode();
         if (!playerCode) {
             window.location.href = 'player-access.html';
         }
 
-        function loadPlayerProfile() {
-            const player = DataManager.getPlayerByCode(playerCode);
-            
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+
+            document.querySelector(`[onclick="switchTab('${tabId}')"]`).classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        async function loadPlayerProfile() {
+            const player = await DataManager.getPlayerByCode(playerCode);
+
             if (!player) {
+                Auth.clearCurrentPlayerCode();
                 window.location.href = 'player-access.html';
                 return;
             }
 
             document.getElementById('playerName').textContent = `${player.firstName} ${player.lastName}`;
-            document.getElementById('playerDetails').textContent = `${player.position} | Jersey #${player.jerseyNumber}`;
+            document.getElementById('playerDetails').textContent = `${player.position || '-'} | Jersey #${player.jerseyNumber ?? '-'}`;
 
-            document.getElementById('position').textContent = player.position;
-            document.getElementById('jerseyNumber').textContent = player.jerseyNumber;
-            document.getElementById('dob').textContent = UI.formatDate(player.dateOfBirth);
+            document.getElementById('position').textContent = player.position || '-';
+            document.getElementById('jerseyNumber').textContent = player.jerseyNumber ?? '-';
+            document.getElementById('dob').textContent = player.dateOfBirth ? UI.formatDate(player.dateOfBirth) : '-';
+            document.getElementById('playerCodeDisplay').textContent = player.code || playerCode;
 
+            // Overall performance average
             let totalLevel = 0;
             let totalMetrics = 0;
-            
-            Object.values(player.metrics).forEach(category => {
-                Object.values(category).forEach(metric => {
-                    totalLevel += metric.level;
-                    totalMetrics++;
+
+            if (player.metrics && typeof player.metrics === 'object') {
+                Object.values(player.metrics).forEach(category => {
+                    Object.values(category || {}).forEach(metric => {
+                        if (metric && typeof metric.level === 'number') {
+                            totalLevel += metric.level;
+                            totalMetrics++;
+                        }
+                    });
                 });
-            });
-            
+            }
+
             const avgLevel = totalMetrics > 0 ? Math.round(totalLevel / totalMetrics) : 0;
             document.getElementById('overallPerformance').textContent = `${avgLevel}/10`;
 
@@ -260,39 +153,50 @@
                 selfDevelopment: 'Self Development',
                 vocal: 'Vocal Leadership',
                 performance: 'Performance Consistency',
-                focus: 'Focus & Concentration',
-                anticipation: 'Game Anticipation',
+                anticipation: 'Anticipation & Reading',
                 decisionMaking: 'Decision Making',
                 versatility: 'Versatility',
-                spaceUsage: 'Space Usage',
+                space: 'Use/Creation of Space',
                 agility: 'Agility',
                 speed: 'Speed',
                 stamina: 'Stamina'
             };
 
-            Object.entries(player.metrics).forEach(([catKey, category]) => {
+            const metrics = player.metrics || {};
+
+            Object.keys(categories).forEach(categoryKey => {
                 const section = document.createElement('div');
                 section.className = 'metric-section';
-                
-                let html = `<h3 style="margin-bottom: var(--space-lg);">${categories[catKey].title}</h3>`;
 
-                Object.entries(category).forEach(([metricKey, metric]) => {
-                    const color = UI.getMetricRatingColor(metric.level);
-                    const displayName = metricLabels[metricKey] || metricKey;
-                    
-                    html += `
-                        <div class="metric-item">
-                            <div class="metric-header">
-                                <span class="metric-name">${displayName}</span>
-                                <span class="metric-level" style="background-color: ${color};">${metric.level}/10</span>
-                            </div>
-                            ${metric.comment ? `<div class="metric-comment">💬 ${metric.comment}</div>` : ''}
+                section.innerHTML = `
+                    <h3>${categories[categoryKey].title}</h3>
+                    <div class="metric-grid" id="${categoryKey}-metrics"></div>
+                `;
+
+                metricsContainer.appendChild(section);
+
+                const grid = section.querySelector(`#${categoryKey}-metrics`);
+                const category = metrics[categoryKey] || {};
+
+                Object.keys(category).forEach(metricKey => {
+                    const metric = category[metricKey];
+                    const level = metric?.level ?? 0;
+                    const comment = metric?.comment ?? '';
+
+                    const card = document.createElement('div');
+                    card.className = 'metric-card';
+
+                    card.innerHTML = `
+                        <div class="metric-header">
+                            <div class="metric-name">${metricLabels[metricKey] || metricKey}</div>
+                            <div class="metric-rating ${UI.getMetricRatingBadgeClass(level)}">${level}/10</div>
+                        </div>
+                        <div class="metric-comment">
+                            ${comment ? comment : '<span style="color: var(--gray-400);">No comment yet.</span>'}
                         </div>
                     `;
+                    grid.appendChild(card);
                 });
-
-                section.innerHTML = html;
-                metricsContainer.appendChild(section);
             });
         }
 
@@ -300,45 +204,39 @@
             const videosContainer = document.getElementById('videosContainer');
             videosContainer.innerHTML = '';
 
-            if (!player.assignedVideos || player.assignedVideos.length === 0) {
-                videosContainer.innerHTML = '<p style="color: var(--gray-500); text-align: center; padding: var(--space-lg);">No training videos assigned yet. Check back soon!</p>';
+            const videos = Array.isArray(player.assignedVideos) ? player.assignedVideos : [];
+
+            if (videos.length === 0) {
+                videosContainer.innerHTML = `
+                    <div class="card" style="text-align:center; padding: var(--space-xl); color: var(--gray-500);">
+                        No videos assigned yet.
+                    </div>
+                `;
                 return;
             }
 
-            player.assignedVideos.forEach(video => {
-                const videoCard = document.createElement('div');
-                videoCard.className = 'video-card';
-                
-                videoCard.innerHTML = `
-                    <div class="video-title">${video.title}</div>
-                    <div class="video-date">📅 Assigned: ${UI.formatDate(video.assignedDate)}</div>
-                    ${video.url ? `
-                        <div style="margin-top: var(--space-md);">
-                            <iframe width="100%" height="315" src="${video.url}" 
-                                frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                                allowfullscreen style="border-radius: var(--radius-md);"></iframe>
-                        </div>
-                    ` : ''}
+            videos.forEach(video => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.style.marginBottom = 'var(--space-md)';
+
+                card.innerHTML = `
+                    <h4 style="margin-bottom: var(--space-sm);">${video.title || 'Training Video'}</h4>
+                    <a class="btn btn-secondary" href="${video.url}" target="_blank" rel="noopener noreferrer">
+                        Watch Video
+                    </a>
                 `;
-                
-                videosContainer.appendChild(videoCard);
+
+                videosContainer.appendChild(card);
             });
         }
 
-        function switchTab(tabName) {
-            document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            
-            document.getElementById(tabName).classList.add('active');
-            event.target.classList.add('active');
-        }
-
-        function logoutPlayer() {
+        // Load on page open
+        loadPlayerProfile().catch(err => {
+            console.error(err);
             Auth.clearCurrentPlayerCode();
             window.location.href = 'player-access.html';
-        }
-
-        loadPlayerProfile();
+        });
     </script>
 </body>
 </html>
