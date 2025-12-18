@@ -1,4 +1,5 @@
 
+
 /* TrackerU - Soccer Player Tracking System */
 
 :root {
@@ -516,55 +517,6 @@ a:hover {
   
   .hero {
     padding: var(--space-xl) var(--space-md);
-  }
-}
-
-
-@media (max-width: 600px) {
-  .container {
-    padding: 0 var(--space-md);
-  }
-
-  .navbar-container {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-md);
-  }
-
-  .navbar-menu {
-    flex-wrap: wrap;
-    gap: var(--space-sm);
-  }
-
-  .hero {
-    text-align: left;
-    padding: var(--space-lg) var(--space-md);
-  }
-
-  /* Make buttons easier to tap */
-  .btn {
-    width: 100%;
-    justify-content: center;
-  }
-
-  /* Generic grid utilities collapse to 1 column */
-  .grid-2,
-  .grid-3,
-  .stats-grid {
-    grid-template-columns: 1fr !important;
-  }
-
-  /* Modals on small screens */
-  .modal-content {
-    width: 95%;
-    max-height: 90vh;
-    margin: var(--space-md);
-    padding: var(--space-md);
-  }
-
-  /* Profile page info blocks stack nicely */
-  .profile-info {
-    grid-template-columns: 1fr;
   }
 }
 

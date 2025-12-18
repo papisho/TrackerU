@@ -2,12 +2,12 @@
 
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Player Access - TrackerU</title>
-        <link rel="stylesheet" href="css/styles.css">
-        <style>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Player Access - TrackerU</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
         .access-container {
             display: flex;
             align-items: center;
@@ -56,91 +56,79 @@
             text-transform: uppercase;
         }
     </style>
-    </head>
-    <body>
-        <!-- Navigation -->
-        <nav class="navbar">
-            <div class="navbar-container">
-                <div class="navbar-brand">
-                    <div class="navbar-brand-icon">⚽</div>
-                    <span>TrackerU</span>
-                </div>
-                <ul class="navbar-menu">
-                    <li><a href="index.html">Home</a></li>
-                    <li><a href="player-access.html" class="active">Player
-                            Access</a></li>
-                    <li><a href="admin-login.html">Admin Login</a></li>
-                </ul>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand">
+                <div class="navbar-brand-icon">⚽</div>
+                <span>TrackerU</span>
             </div>
-        </nav>
+            <ul class="navbar-menu">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="player-access.html" class="active">Player Access</a></li>
+                <li><a href="admin-login.html">Admin Login</a></li>
+            </ul>
+        </div>
+    </nav>
 
-        <div class="access-container">
-            <div class="access-card">
-                <div class="access-header">
-                    <div class="access-icon">👤</div>
-                    <h1>Player Portal</h1>
-                    <p style="color: var(--gray-600);">Enter your player code to
-                        access your profile</p>
-                </div>
+    <div class="access-container">
+        <div class="access-card">
+            <div class="access-header">
+                <div class="access-icon">👤</div>
+                <h1>Player Portal</h1>
+                <p style="color: var(--gray-600);">Enter your player code to access your profile</p>
+            </div>
 
-                <form id="accessForm">
-                    <div class="form-group">
-                        <label class="form-label">Player Secret Code (5
-                            characters)</label>
-                        <div class="code-input-group">
-                            <input
-                                type="text"
-                                class="form-input code-input"
-                                id="playerCode"
-                                maxlength="5"
-                                placeholder="E.G. ABC12"
-                                autocomplete="off"
-                                required>
-                        </div>
-                        <p
-                            style="color: var(--gray-500); font-size: var(--font-size-sm);">
-                            Your coach provided this code for confidential
-                            profile access.
-                        </p>
+            <form id="accessForm">
+                <div class="form-group">
+                    <label class="form-label">Player Secret Code (5 characters)</label>
+                    <div class="code-input-group">
+                        <input 
+                            type="text" 
+                            class="form-input code-input" 
+                            id="playerCode" 
+                            maxlength="5"
+                            placeholder="E.G. ABC12"
+                            autocomplete="off"
+                            required
+                        >
                     </div>
-
-                    <button type="submit" class="btn btn-primary"
-                        style="width: 100%; margin-bottom: var(--space-md);">Access
-                        Profile</button>
-                </form>
-
-                <div id="errorAlert" class="alert alert-danger"
-                    style="display: none;"></div>
-
-                <div
-                    style="text-align: center; background-color: var(--gray-50); padding: var(--space-lg); border-radius: var(--radius-md);">
-                    <p
-                        style="color: var(--gray-600); font-size: var(--font-size-sm); margin-bottom: var(--space-sm);">
-                        <strong>Don't have a code?</strong>
-                    </p>
-                    <p
-                        style="color: var(--gray-500); font-size: var(--font-size-sm); margin: 0;">
-                        Contact your soccer coach to receive your player code.
+                    <p style="color: var(--gray-500); font-size: var(--font-size-sm);">
+                        Your coach provided this code for confidential profile access.
                     </p>
                 </div>
 
-                <div style="text-align: center; margin-top: var(--space-lg);">
-                    <a href="index.html"
-                        style="color: var(--primary); font-size: var(--font-size-sm);">←
-                        Back to Home</a>
-                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-bottom: var(--space-md);">Access Profile</button>
+            </form>
+
+            <div id="errorAlert" class="alert alert-danger" style="display: none;"></div>
+
+            <div style="text-align: center; background-color: var(--gray-50); padding: var(--space-lg); border-radius: var(--radius-md);">
+                <p style="color: var(--gray-600); font-size: var(--font-size-sm); margin-bottom: var(--space-sm);">
+                    <strong>Don't have a code?</strong>
+                </p>
+                <p style="color: var(--gray-500); font-size: var(--font-size-sm); margin: 0;">
+                    Contact your soccer coach to receive your player code.
+                </p>
+            </div>
+
+            <div style="text-align: center; margin-top: var(--space-lg);">
+                <a href="index.html" style="color: var(--primary); font-size: var(--font-size-sm);">← Back to Home</a>
             </div>
         </div>
+    </div>
 
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
         <script src="js/app.js"></script>
-        <script>
-       document.getElementById('accessForm').addEventListener('submit', async (e) => {
+    <script>
+        document.getElementById('accessForm').addEventListener('submit', (e) => {
             e.preventDefault();
-    
+            
             const code = document.getElementById('playerCode').value.toUpperCase().trim();
             const errorAlert = document.getElementById('errorAlert');
-
-            await DataManager.init();
+            
             const player = DataManager.getPlayerByCode(code);
             
             if (player) {
@@ -152,7 +140,6 @@
                 document.getElementById('playerCode').value = '';
             }
         });
-        
     </script>
-    </body>
+</body>
 </html>
