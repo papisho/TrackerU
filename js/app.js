@@ -1,185 +1,342 @@
 
-// TrackerU - Supabase-enabled App Logic
-// Requires: <script src="https://unpkg.com/@supabase/supabase-js@2"></script> BEFORE this file
 
-// 1) Put your real Supabase Project URL + anon key here (Project Settings -> API)
-const SUPABASE_URL = "https://axrqkbdgcvsyoxlbuwoh.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF4cnFrYmRnY3ZzeW94bGJ1d29oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU0OTU4MTcsImV4cCI6MjA4MTA3MTgxN30.kTP1WkLi9dkU5VB6egAF6IehYVURVV2inIju_2ckTHQ";
+// TrackerU - Main Application Logic
 
-// Create Supabase client (this enables Auth + DB)
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Supabase configuration
+const SUPABASE_URL = 'https://axrqkbdgcvsyoxlbuwoh.supabase.co';   // <- paste from Supabase
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF4cnFrYmRnY3ZzeW94bGJ1d29oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU0OTU4MTcsImV4cCI6MjA4MTA3MTgxN30.kTP1WkLi9dkU5VB6egAF6IehYVURVV2inIju_2ckTHQ';        // <- paste anon key
 
-// --------------------
-// Data Management
-// --------------------
+const SUPABASE_API = `${SUPABASE_URL}/rest/v1`;
+const SUPABASE_HEADERS = {
+  apikey: SUPABASE_ANON_KEY,
+  Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+  'Content-Type': 'application/json'
+};
+
+
+// Data Management System
 const DataManager = {
-  // Admin dashboard list (works only when logged in; RLS will restrict by admin_id)
-  async fetchPlayers() {
-    const { data, error } = await supabaseClient
-      .from("players")
-      .select("*")
-      .order("created_at", { ascending: false });
+  _players: [],
+  _initialized: false,
 
-    if (error) throw error;
-    return data || [];
+  async init() {
+    if (this._initialized) return;
+    try {
+      const res = await fetch(`${SUPABASE_API}/players?select=*`, {
+        headers: SUPABASE_HEADERS
+      });
+      if (!res.ok) {
+        console.error('Failed to fetch players from Supabase', await res.text());
+        this._players = [];
+      } else {
+        this._players = await res.json();
+      }
+      this._initialized = true;
+    } catch (err) {
+      console.error('Error loading players from Supabase:', err);
+      this._players = [];
+      this._initialized = true;
+    }
   },
 
-  async getPlayerById(id) {
-    const { data, error } = await supabaseClient
-      .from("players")
-      .select("*")
-      .eq("id", id)
-      .maybeSingle();
-
-    if (error) throw error;
-    return data || null;
+  // Local cache helpers
+  getPlayers() {
+    return this._players;
   },
 
-  // ✅ Player/parent lookup by code (works for anon) via RPC
-  async getPlayerByCode(code) {
-    const normalized = String(code || "").trim().toUpperCase();
-    if (!normalized) return null;
+  getPlayerById(id) {
+    return this._players.find(p => String(p.id) === String(id)) || null;
+  },
 
-    const { data, error } = await supabaseClient
-      .rpc("get_player_by_code", { code_input: normalized });
+  getPlayerByCode(code) {
+    const normalized = code.trim().toUpperCase();
+    return this._players.find(p => p.code === normalized) || null;
+  },
 
-    if (error) {
-      console.error("RPC get_player_by_code error:", error.message);
-      return null;
+  async addPlayer(playerData) {
+    // Ensure we have a code – you can still use your existing UI or generate one here
+    if (!playerData.code) {
+      playerData.code = this.generateSecretCode();
+    }
+    playerData.code = playerData.code.toUpperCase();
+
+    const res = await fetch(`${SUPABASE_API}/players`, {
+      method: 'POST',
+      headers: SUPABASE_HEADERS,
+      body: JSON.stringify(playerData)
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      console.error('Failed to create player:', text);
+      throw new Error('Failed to create player');
     }
 
-    // RETURNS TABLE -> array
-    return Array.isArray(data) && data.length ? data[0] : null;
-  },
-
-  // Admin creates player: must include admin_id = auth.uid() to satisfy RLS
-  async addPlayer(playerData) {
-    const user = await Auth.getUser();
-    if (!user) throw new Error("Not logged in.");
-
-    const payload = {
-      ...playerData,
-      code: (playerData.code || this.generateSecretCode()).toUpperCase(),
-      admin_id: user.id,
-      assignedVideos: Array.isArray(playerData.assignedVideos) ? playerData.assignedVideos : [],
-      metrics: playerData.metrics || {},
-    };
-
-    const { data, error } = await supabaseClient
-      .from("players")
-      .insert(payload)
-      .select("*")
-      .single();
-
-    if (error) throw error;
-    return data;
+    const created = (await res.json())[0] || (await res.json());
+    // Supabase REST returns either the row or array depending on settings; handle both
+    if (Array.isArray(created)) {
+      this._players.push(created[0]);
+      return created[0];
+    } else {
+      this._players.push(created);
+      return created;
+    }
   },
 
   async updatePlayer(id, updates) {
-    const { data, error } = await supabaseClient
-      .from("players")
-      .update(updates)
-      .eq("id", id)
-      .select("*")
-      .single();
+    const res = await fetch(`${SUPABASE_API}/players?id=eq.${id}&select=*`, {
+      method: 'PATCH',
+      headers: SUPABASE_HEADERS,
+      body: JSON.stringify(updates)
+    });
 
-    if (error) throw error;
-    return data;
+    if (!res.ok) {
+      const text = await res.text();
+      console.error('Failed to update player:', text);
+      throw new Error('Failed to update player');
+    }
+
+    const updatedRows = await res.json();
+    const updated = Array.isArray(updatedRows) ? updatedRows[0] : updatedRows;
+
+    const idx = this._players.findIndex(p => String(p.id) === String(id));
+    if (idx !== -1 && updated) {
+      this._players[idx] = updated;
+    }
+    return updated;
   },
 
   async deletePlayer(id) {
-    const { error } = await supabaseClient
-      .from("players")
-      .delete()
-      .eq("id", id);
+    const res = await fetch(`${SUPABASE_API}/players?id=eq.${id}`, {
+      method: 'DELETE',
+      headers: SUPABASE_HEADERS
+    });
 
-    if (error) throw error;
-  },
+    if (!res.ok) {
+      const text = await res.text();
+      console.error('Failed to delete player:', text);
+      throw new Error('Failed to delete player');
+    }
 
-  async addVideo(playerId, video) {
-    const player = await this.getPlayerById(playerId);
-    if (!player) throw new Error("Player not found");
-
-    const assignedVideos = Array.isArray(player.assignedVideos) ? player.assignedVideos : [];
-    const newVideo = {
-      id: crypto.randomUUID(),
-      title: video.title || "Training Video",
-      url: video.url,
-      created_at: new Date().toISOString(),
-    };
-
-    assignedVideos.push(newVideo);
-    return await this.updatePlayer(playerId, { assignedVideos });
-  },
-
-  async removeVideo(playerId, videoId) {
-    const player = await this.getPlayerById(playerId);
-    if (!player) throw new Error("Player not found");
-
-    const assignedVideos = (player.assignedVideos || []).filter(v => v.id !== videoId);
-    return await this.updatePlayer(playerId, { assignedVideos });
+    this._players = this._players.filter(p => String(p.id) !== String(id));
   },
 
   generateSecretCode() {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    let code = "";
-    for (let i = 0; i < 5; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 5; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    code = code.toUpperCase();
+    if (this._players.some(p => p.code === code)) {
+      return this.generateSecretCode();
+    }
     return code;
   }
 };
 
-// --------------------
-// Auth
-// --------------------
+// Authentication System
 const Auth = {
-  async loginAdmin(email, password) {
-    const { data, error } = await supabaseClient.auth.signInWithPassword({
-      email: String(email || "").trim(),
-      password: String(password || "").trim(),
+  isAdminLoggedIn() {
+    return sessionStorage.getItem('adminLoggedIn') === 'true';
+  },
+  
+  loginAdmin(username, password) {
+    if (username === DataManager.ADMIN_USERNAME && password === DataManager.ADMIN_PASSWORD) {
+      sessionStorage.setItem('adminLoggedIn', 'true');
+      return true;
+    }
+    return false;
+  },
+  
+  logoutAdmin() {
+    sessionStorage.removeItem('adminLoggedIn');
+  },
+  
+  checkAdminAuth() {
+    if (!this.isAdminLoggedIn()) {
+      window.location.href = 'admin-login.html';
+    }
+  },
+  
+  getCurrentPlayerCode() {
+    return sessionStorage.getItem('currentPlayerCode');
+  },
+  
+  setCurrentPlayerCode(code) {
+    sessionStorage.setItem('currentPlayerCode', code);
+  },
+  
+  clearCurrentPlayerCode() {
+    sessionStorage.removeItem('currentPlayerCode');
+  }
+};
+
+// UI Helper Functions
+const UI = {
+  showAlert(message, type = 'info') {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type}`;
+    alertDiv.textContent = message;
+    alertDiv.style.position = 'fixed';
+    alertDiv.style.top = '20px';
+    alertDiv.style.right = '20px';
+    alertDiv.style.zIndex = '9999';
+    alertDiv.style.maxWidth = '400px';
+    
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+      alertDiv.remove();
+    }, 4000);
+  },
+  
+  openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.classList.add('show');
+  },
+  
+  closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.classList.remove('show');
+  },
+  
+  getMetricRatingColor(level) {
+    if (level >= 8) return '#2ecc71';
+    if (level >= 6) return '#f39c12';
+    return '#e74c3c';
+  },
+  
+  getMetricRatingBadgeClass(level) {
+    if (level >= 8) return 'badge-success';
+    if (level >= 6) return 'badge-warning';
+    return 'badge-danger';
+  },
+  
+  formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  }
+};
+
+// Simple rule-based "AI" helper for player summaries
+const AI = {
+  _categoryLabels: {
+    technical: 'technical skills',
+    mentality: 'mentality',
+    intelligence: 'soccer intelligence',
+    athleticism: 'athleticism'
+  },
+
+  _metricLabels: {
+    ballControl: 'ball control (first touch & receiving)',
+    ballStriking: 'ball striking (shooting & long passing)',
+    passing: 'short and long passing',
+    duels: '1v1 duel ability',
+    emotionControl: 'emotion control',
+    selfDevelopment: 'taking charge of their own development',
+    vocal: 'vocal leadership',
+    performance: 'performance consistency',
+    focus: 'focus & concentration',
+    anticipation: 'game anticipation and reading play',
+    decisionMaking: 'decision making',
+    versatility: 'versatility (playing multiple roles)',
+    spaceUsage: 'use and creation of space',
+    agility: 'agility',
+    speed: 'speed',
+    stamina: 'stamina'
+  },
+
+  _collectMetrics(player) {
+    const metrics = [];
+    if (!player || !player.metrics) return metrics;
+
+    Object.entries(player.metrics).forEach(([catKey, category]) => {
+      Object.entries(category).forEach(([metricKey, metric]) => {
+        if (!metric || typeof metric.level !== 'number') return;
+
+        metrics.push({
+          key: metricKey,
+          label: this._metricLabels[metricKey] || metricKey,
+          category: this._categoryLabels[catKey] || catKey,
+          level: metric.level
+        });
+      });
     });
 
-    if (error) return { ok: false, error: error.message };
-    return { ok: true, data };
+    return metrics;
   },
 
-  async logoutAdmin() {
-    await supabaseClient.auth.signOut();
+  _joinLabels(items) {
+    const labels = items.map(i => i.label);
+    if (labels.length === 0) return '';
+    if (labels.length === 1) return labels[0];
+    if (labels.length === 2) return `${labels[0]} and ${labels[1]}`;
+    return `${labels.slice(0, -1).join(', ')} and ${labels[labels.length - 1]}`;
   },
 
-  async getUser() {
-    const { data } = await supabaseClient.auth.getUser();
-    return data?.user || null;
-  },
+  generatePlayerSummary(player) {
+    const metrics = this._collectMetrics(player);
 
-  async requireAdmin() {
-    const user = await this.getUser();
-    if (!user) window.location.href = "admin-login.html";
-  },
+    if (metrics.length === 0) {
+      return {
+        overallScore: 0,
+        strengths: [],
+        weaknesses: [],
+        overallText: 'We do not have enough rating data yet to generate a development summary.',
+        strengthsText: 'Rate a few areas to see strengths here.',
+        focusText: 'Rate a few areas to see focus points here.'
+      };
+    }
 
-  // Player session (code-based)
-  getCurrentPlayerCode() {
-    return sessionStorage.getItem("currentPlayerCode");
-  },
-  setCurrentPlayerCode(code) {
-    sessionStorage.setItem("currentPlayerCode", code);
-  },
-  clearCurrentPlayerCode() {
-    sessionStorage.removeItem("currentPlayerCode");
+    const total = metrics.reduce((sum, m) => sum + m.level, 0);
+    const rawAvg = total / metrics.length;
+    const overallScore = Math.round(rawAvg * 10) / 10; // 1 decimal
+
+    const sorted = [...metrics].sort((a, b) => b.level - a.level);
+    const strengths = sorted.slice(0, 3);
+    const weaknesses = sorted.slice(-3).reverse(); // lowest first
+
+    const name = player.firstName ? player.firstName : 'This player';
+
+    let overallBand;
+    if (overallScore >= 8) {
+      overallBand = 'at a very strong overall level';
+    } else if (overallScore >= 6.5) {
+      overallBand = 'at a solid overall level';
+    } else if (overallScore >= 5) {
+      overallBand = 'developing with room for growth in several areas';
+    } else {
+      overallBand = 'in an early development stage and building foundations';
+    }
+
+    const overallText = `${name} is currently performing ${overallBand} (around ${overallScore}/10 across all tracked areas).`;
+
+    const strengthsText = strengths.length
+      ? `${this._joinLabels(strengths)} stand out as current strengths.`
+      : 'No clear strengths identified yet – add more ratings to see them here.';
+
+    const focusText = weaknesses.length
+      ? `${this._joinLabels(weaknesses)} are the main priorities for improvement over the next phase.`
+      : 'No clear focus areas identified yet – add more ratings to see them here.';
+
+    return {
+      overallScore,
+      strengths,
+      weaknesses,
+      overallText,
+      strengthsText,
+      focusText
+    };
   }
 };
 
-// --------------------
-// UI helpers (keep minimal)
-// --------------------
-const UI = {
-  formatDate(dateString) {
-    const d = new Date(dateString);
-    return isNaN(d.getTime()) ? "-" : d.toLocaleDateString();
-  }
-};
 
-// Expose globally for inline scripts
-window.DataManager = DataManager;
-window.Auth = Auth;
-window.UI = UI;
-window.supabaseClient = supabaseClient;
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', () => {
+  DataManager.init();
+});
