@@ -174,7 +174,7 @@ async getPlayerByCode(code) {
 
   // Otherwise call the Supabase RPC
   try {
-    const res = await fetch(`${SUPABASE_API}/rpc/get_player_by_code`, {
+    const res = await fetch(`${SUPABASE_URL}/rpc/get_player_by_code`, {
       method: 'POST',
       headers: SUPABASE_HEADERS,
       body: JSON.stringify({ code_input: normalized })
