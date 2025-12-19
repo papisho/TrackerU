@@ -11,10 +11,6 @@
 const SUPABASE_URL = 'https://axrqkbdgcvsyoxlbuwoh.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF4cnFrYmRnY3ZzeW94bGJ1d29oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU0OTU4MTcsImV4cCI6MjA4MTA3MTgxN30.kTP1WkLi9dkU5VB6egAF6IehYVURVV2inIju_2ckTHQ';
 
-const SUPABASE_HEADERS = {
-  'Content-Type': 'application/json',
-  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`  
-};
 
 
 // supabase-js must be loaded before this file:
@@ -178,25 +174,19 @@ async getPlayerByCode(code) {
     if (localMatch) return localMatch;
   }
 
-  // Otherwise call the Supabase RPC
-  try {
-    const res = await fetch(`${SUPABASE_URL}/rpc/get_player_by_code`, {
-      method: 'POST',
-      headers: SUPABASE_HEADERS,
-      body: JSON.stringify({ code_input: normalized })
-    });
-    if (!res.ok) {
-      console.error('RPC get_player_by_code failed:', await res.text());
-      return null;
-    }
-    const data = await res.json();
-    return Array.isArray(data) && data.length > 0 ? data[0] : null;
-  } catch (err) {
-    console.error('Error during RPC get_player_by_code:', err);
+  
+  // Otherwise call the Supabase RPC using supabase-js 
+  const { data, error } = await supabaseClient
+    .rpc('get_player_by_code', { code_input: normalized });
+
+  if (error) {
+    console.error('RPC get_player_by_code error:', error.message);
     return null;
   }
-},
 
+  return Array.isArray(data) && data.length > 0 ? data[0] : null;
+
+},
 
   generateSecretCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
