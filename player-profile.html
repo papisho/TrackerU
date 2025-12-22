@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Player Profile - TrackerU</title>
     <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/analytics.css">
     <style>
         .profile-header {
             background: linear-gradient(135deg, var(--primary), #0f172a);
@@ -133,6 +132,25 @@
         .tab-pane.active {
             display: block;
         }
+
+        .ai-summary {
+            background: linear-gradient(135deg, var(--primary-light), #f0f9ff);
+            border-left: 4px solid var(--primary);
+            padding: var(--space-xl);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--space-xl);
+            box-shadow: var(--shadow-md);
+        }
+
+        .ai-summary h4 {
+            color: var(--primary);
+            margin-bottom: var(--space-md);
+        }
+
+        .ai-summary p {
+            color: var(--gray-700);
+            line-height: 1.8;
+        }
     </style>
 </head>
 <body>
@@ -180,15 +198,24 @@
             </div>
         </div>
 
+        <!-- AI Summary Section -->
+        <div id="aiSummarySection"></div>
+
         <!-- Tabs -->
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('metrics-tab')">📊 Performance Metrics</button>
+            <button class="tab-btn" onclick="switchTab('analytics-tab')">📈 Analytics</button>
             <button class="tab-btn" onclick="switchTab('videos-tab')">🎬 Training Videos</button>
         </div>
 
         <!-- Metrics Tab -->
         <div id="metrics-tab" class="tab-pane active">
             <div id="metricsContainer"></div>
+        </div>
+
+        <!-- Analytics Tab -->
+        <div id="analytics-tab" class="tab-pane">
+            <div id="analyticsContainer"></div>
         </div>
 
         <!-- Videos Tab -->
@@ -201,13 +228,18 @@
     </div>
 
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
     <script src="js/app.js"></script>
+    <script src="js/analytics.js"></script>
     <script>
         const playerCode = Auth.getCurrentPlayerCode();
         if (!playerCode) {
             window.location.href = 'player-access.html';
         }
+
+        let currentPlayer = null;
+        let analyticsCharts = [];
 
         async function loadPlayerProfile() {
             const player = await DataManager.getPlayerByCode(playerCode);
@@ -216,6 +248,8 @@
                 window.location.href = 'player-access.html';
                 return;
             }
+
+            currentPlayer = player;
 
             document.getElementById('playerName').textContent = `${player.firstName} ${player.lastName}`;
             document.getElementById('playerDetails').textContent = `${player.position} | Jersey #${player.jerseyNumber}`;
@@ -237,8 +271,23 @@
             const avgLevel = totalMetrics > 0 ? Math.round(totalLevel / totalMetrics) : 0;
             document.getElementById('overallPerformance').textContent = `${avgLevel}/10`;
 
+            loadAISummary(player);
             loadMetrics(player);
             loadVideos(player);
+        }
+
+        function loadAISummary(player) {
+            const aiSummary = AI.generatePlayerSummary(player);
+            const summarySection = document.getElementById('aiSummarySection');
+            
+            summarySection.innerHTML = `
+                <div class="ai-summary">
+                    <h4>🤖 AI Development Summary</h4>
+                    <p style="margin-bottom: var(--space-sm);">${aiSummary.overallText}</p>
+                    <p style="margin-bottom: var(--space-xs);"><strong>Strengths:</strong> ${aiSummary.strengthsText}</p>
+                    <p style="margin: 0;"><strong>Focus areas:</strong> ${aiSummary.focusText}</p>
+                </div>
+            `;
         }
 
         function loadMetrics(player) {
@@ -310,12 +359,15 @@
                 const videoCard = document.createElement('div');
                 videoCard.className = 'video-card';
                 
+                // Use the convertToEmbedUrl function
+                const embedUrl = UI.convertToEmbedUrl(video.url);
+                
                 videoCard.innerHTML = `
                     <div class="video-title">${video.title}</div>
                     <div class="video-date">📅 Assigned: ${UI.formatDate(video.assignedDate)}</div>
-                    ${video.url ? `
+                    ${embedUrl ? `
                         <div style="margin-top: var(--space-md);">
-                            <iframe width="100%" height="315" src="${video.url}" 
+                            <iframe width="100%" height="315" src="${embedUrl}" 
                                 frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
                                 allowfullscreen style="border-radius: var(--radius-md);"></iframe>
                         </div>
@@ -326,12 +378,140 @@
             });
         }
 
+        function loadAnalytics(player) {
+            const analyticsContainer = document.getElementById('analyticsContainer');
+            const analyticsData = Analytics.generateAnalyticsData(player);
+
+            // Clear existing charts
+            analyticsCharts.forEach(chart => Analytics.destroyChart(chart));
+            analyticsCharts = [];
+
+            if (!analyticsData.hasData) {
+                analyticsContainer.innerHTML = `
+                    <div class="analytics-empty">
+                        <div class="analytics-empty-icon">📊</div>
+                        <h3 class="analytics-empty-title">No Analytics Available Yet</h3>
+                        <p class="analytics-empty-text">${analyticsData.message}</p>
+                    </div>
+                `;
+                return;
+            }
+
+            analyticsContainer.innerHTML = `
+                <div class="analytics-container">
+                    <div class="analytics-header">
+                        <h2 class="analytics-title">📈 Performance Analytics</h2>
+                    </div>
+
+                    <!-- Stats Cards -->
+                    <div class="analytics-stats">
+                        <div class="stat-card">
+                            <div class="stat-value">${analyticsData.stats.avgRating}</div>
+                            <div class="stat-label">Overall Average</div>
+                        </div>
+                        <div class="stat-card success">
+                            <div class="stat-value">${analyticsData.stats.improvementCount}</div>
+                            <div class="stat-label">Skills Improving</div>
+                        </div>
+                        <div class="stat-card warning">
+                            <div class="stat-value">${analyticsData.stats.totalRatings}</div>
+                            <div class="stat-label">Total Ratings</div>
+                        </div>
+                        <div class="stat-card info">
+                            <div class="stat-value">${analyticsData.stats.improvementRate}%</div>
+                            <div class="stat-label">Improvement Rate</div>
+                        </div>
+                    </div>
+
+                    <!-- Charts Grid -->
+                    <div class="chart-grid">
+                        <!-- Timeline Chart -->
+                        <div class="chart-card chart-full-width">
+                            <div class="chart-card-header">
+                                <h3 class="chart-title">Performance Trends Over Time</h3>
+                                <span class="chart-icon">📈</span>
+                            </div>
+                            <div class="chart-body">
+                                <canvas id="timelineChart" class="chart-canvas"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Radar Chart -->
+                        <div class="chart-card">
+                            <div class="chart-card-header">
+                                <h3 class="chart-title">Category Breakdown</h3>
+                                <span class="chart-icon">🎯</span>
+                            </div>
+                            <div class="chart-body">
+                                <canvas id="radarChart" class="chart-canvas"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Distribution Chart -->
+                        <div class="chart-card">
+                            <div class="chart-card-header">
+                                <h3 class="chart-title">Rating Distribution</h3>
+                                <span class="chart-icon">📊</span>
+                            </div>
+                            <div class="chart-body">
+                                <canvas id="distributionChart" class="chart-canvas"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Progress List -->
+                    <div class="metric-section">
+                        <h3 style="margin-bottom: var(--space-lg);">📌 Biggest Changes</h3>
+                        <div class="progress-list" id="progressList"></div>
+                    </div>
+                </div>
+            `;
+
+            // Create charts
+            setTimeout(() => {
+                analyticsCharts.push(Analytics.createTimelineChart('timelineChart', player));
+                analyticsCharts.push(Analytics.createRadarChart('radarChart', analyticsData.categoryAverages));
+                analyticsCharts.push(Analytics.createDistributionChart('distributionChart', analyticsData.ratingDistribution));
+
+                // Render progress list
+                const progressList = document.getElementById('progressList');
+                analyticsData.trends.slice(0, 10).forEach(trend => {
+                    const trendClass = trend.trend;
+                    const trendIcon = trend.change > 0 ? '↑' : trend.change < 0 ? '↓' : '→';
+                    const trendColor = trend.change > 0 ? 'up' : trend.change < 0 ? 'down' : 'stable';
+                    
+                    progressList.innerHTML += `
+                        <div class="progress-item ${trendClass}">
+                            <div class="progress-header">
+                                <span class="progress-name">${trend.label}</span>
+                                <span class="progress-trend ${trendColor}">
+                                    ${trendIcon} ${Math.abs(trend.change).toFixed(1)}
+                                </span>
+                            </div>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar" style="width: ${(trend.lastRating / 10) * 100}%;"></div>
+                            </div>
+                            <div class="progress-details">
+                                <span>From ${trend.firstRating}/10</span>
+                                <span>Now ${trend.lastRating}/10</span>
+                            </div>
+                        </div>
+                    `;
+                });
+            }, 100);
+        }
+
         function switchTab(tabName) {
             document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             
             document.getElementById(tabName).classList.add('active');
             event.target.classList.add('active');
+
+            // Load analytics when tab is activated
+            if (tabName === 'analytics-tab' && currentPlayer) {
+                loadAnalytics(currentPlayer);
+            }
         }
 
         function logoutPlayer() {
