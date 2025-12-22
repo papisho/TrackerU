@@ -1,4 +1,3 @@
-
 // TrackerU - Main Application Logic
 // Front-end only (GitHub Pages friendly)
 // Uses Supabase Auth + PostgREST via supabase-js to enable real-time sync across devices.
@@ -67,6 +66,35 @@ const UI = {
     const date = new Date(dateString);
     if (Number.isNaN(date.getTime())) return String(dateString);
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  },
+
+  /**
+   * Convert YouTube URLs to embed format
+   * Fixes Issue #1: Players unable to open assigned videos
+   */
+  convertToEmbedUrl(url) {
+    if (!url) return '';
+    
+    // YouTube regular URL to embed
+    const youtubeRegex = /(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/;
+    const match = url.match(youtubeRegex);
+    if (match) {
+      return `https://www.youtube.com/embed/${match[1]}`;
+    }
+    
+    // Already an embed URL
+    if (url.includes('youtube.com/embed/')) {
+      return url;
+    }
+    
+    // Vimeo support
+    const vimeoRegex = /vimeo\.com\/(\d+)/;
+    const vimeoMatch = url.match(vimeoRegex);
+    if (vimeoMatch) {
+      return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+    }
+    
+    return url;
   }
 };
 
@@ -226,8 +254,20 @@ async getPlayerByCode(code) {
     return data;
   },
 
+  /**
+   * Update player with rating history tracking
+   * When metrics are updated, preserve history
+   */
   async updatePlayer(id, updates) {
     if (!supabaseClient) throw new Error('Supabase client not available.');
+
+    // If updating metrics, add to history
+    if (updates.metrics) {
+      const player = this.getPlayerById(id);
+      if (player && player.metrics) {
+        updates.metrics = this._addRatingHistory(player.metrics, updates.metrics, updates.ratingContext);
+      }
+    }
 
     const { data, error } = await supabaseClient
       .from('players')
@@ -244,6 +284,45 @@ async getPlayerByCode(code) {
     const idx = this._players.findIndex(p => String(p.id) === String(id));
     if (idx !== -1) this._players[idx] = data;
     return data;
+  },
+
+  /**
+   * Add rating to history when metrics are updated
+   */
+  _addRatingHistory(oldMetrics, newMetrics, context = {}) {
+    const updatedMetrics = {};
+    const currentDate = new Date().toISOString().split('T')[0];
+
+    Object.entries(newMetrics).forEach(([catKey, category]) => {
+      updatedMetrics[catKey] = {};
+      
+      Object.entries(category).forEach(([metricKey, metric]) => {
+        const oldMetric = oldMetrics[catKey]?.[metricKey];
+        const history = Array.isArray(oldMetric?.ratingHistory) 
+          ? [...oldMetric.ratingHistory] 
+          : [];
+
+        // Only add to history if level changed or it's a new rating
+        if (!oldMetric || oldMetric.level !== metric.level) {
+          history.push({
+            level: metric.level,
+            comment: metric.comment || '',
+            date: currentDate,
+            context: context.type || 'manual',
+            contextDate: context.contextDate || null,
+            trainingType: context.trainingType || null
+          });
+        }
+
+        updatedMetrics[catKey][metricKey] = {
+          level: metric.level,
+          comment: metric.comment || '',
+          ratingHistory: history
+        };
+      });
+    });
+
+    return updatedMetrics;
   },
 
   async deletePlayer(id) {
@@ -267,10 +346,14 @@ async getPlayerByCode(code) {
     if (!player) throw new Error('Player not found.');
 
     const assignedVideos = Array.isArray(player.assignedVideos) ? [...player.assignedVideos] : [];
+    
+    // Convert URL to embed format
+    const embedUrl = UI.convertToEmbedUrl(video.url);
+    
     assignedVideos.push({
       id: crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()),
       title: String(video.title || '').trim(),
-      url: String(video.url || '').trim(),
+      url: embedUrl,
       assignedDate: new Date().toISOString()
     });
 
