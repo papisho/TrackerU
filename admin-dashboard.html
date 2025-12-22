@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Dashboard - TrackerU</title>
   <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/analytics.css">
   <style>
     .dashboard-header {
       background: linear-gradient(135deg, var(--primary), #0f172a);
@@ -53,6 +53,26 @@
     .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
     .tab-content { display: none; }
     .tab-content.active { display: block; }
+
+    .rating-context-section {
+      background: var(--gray-50);
+      padding: var(--space-lg);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--space-xl);
+      border-left: 4px solid var(--primary);
+    }
+
+    .context-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: var(--space-md);
+    }
+
+    @media (max-width: 768px) {
+      .context-grid {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
@@ -156,7 +176,10 @@
 
   <!-- Supabase JS MUST load before app.js -->
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
   <script src="js/app.js"></script>
+  <script src="js/analytics.js"></script>
 
   <script>
     const METRIC_CONFIG = {
@@ -307,7 +330,7 @@
       Object.entries(METRIC_CONFIG).forEach(([catKey, catCfg]) => {
         metrics[catKey] = {};
         Object.keys(catCfg.metrics).forEach(metricKey => {
-          metrics[catKey][metricKey] = { level: 5, comment: '' };
+          metrics[catKey][metricKey] = { level: 5, comment: '', ratingHistory: [] };
         });
       });
       return metrics;
@@ -428,6 +451,42 @@
             </div>
           </div>
 
+          <!-- Rating Context Section -->
+          <div class="rating-context-section">
+            <h4 style="margin-bottom: var(--space-md);">📋 Rating Context</h4>
+            <p style="font-size: var(--font-size-sm); color: var(--gray-600); margin-bottom: var(--space-md);">Select the type of assessment you're recording:</p>
+            
+            <div class="context-grid">
+              <div class="form-group">
+                <label class="form-label">Rating Type</label>
+                <select class="form-select" name="ratingContextType" id="ratingContextType" onchange="handleContextTypeChange()">
+                  <option value="manual">General Update</option>
+                  <option value="training">Training Session</option>
+                  <option value="game">Game/Match</option>
+                  <option value="weekly">Weekly Review</option>
+                  <option value="biweekly">Bi-weekly Review</option>
+                  <option value="monthly">Monthly Review</option>
+                </select>
+              </div>
+              
+              <div class="form-group" id="contextDateGroup" style="display: none;">
+                <label class="form-label">Session/Game Date</label>
+                <input type="date" class="form-input" name="contextDate" id="contextDate">
+              </div>
+              
+              <div class="form-group" id="trainingTypeGroup" style="display: none;">
+                <label class="form-label">Training Focus</label>
+                <select class="form-select" name="trainingType" id="trainingType">
+                  <option value="technical">Technical</option>
+                  <option value="tactical">Tactical</option>
+                  <option value="fitness">Fitness</option>
+                  <option value="mental">Mental/Team</option>
+                  <option value="recovery">Recovery</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
           <h4 style="border-bottom: 2px solid var(--gray-200); padding-bottom: var(--space-md); margin-bottom: var(--space-md);">
             Performance Metrics (1–10) & Comments
           </h4>
@@ -468,6 +527,9 @@
       document.getElementById('playerDetails').innerHTML = html;
       UI.openModal('playerModal');
 
+      // Set today as default date
+      document.getElementById('contextDate').value = new Date().toISOString().split('T')[0];
+
       document.getElementById('editPlayerForm').addEventListener('submit', async (e) => {
         e.preventDefault();
 
@@ -491,18 +553,25 @@
           });
         });
 
+        const ratingContext = {
+          type: form.ratingContextType.value,
+          contextDate: form.contextDate ? form.contextDate.value : null,
+          trainingType: form.trainingType ? form.trainingType.value : null
+        };
+
         const updatedData = {
           firstName: (form.firstName.value || '').trim(),
           lastName: (form.lastName.value || '').trim(),
           position: (form.position.value || '').trim(),
           jerseyNumber: form.jerseyNumber.value ? parseInt(form.jerseyNumber.value, 10) : null,
           dateOfBirth: form.dateOfBirth.value || null,
-          metrics: updatedMetrics
+          metrics: updatedMetrics,
+          ratingContext
         };
 
         try {
           await DataManager.updatePlayer(playerId, updatedData);
-          UI.showAlert('Player updated successfully', 'success');
+          UI.showAlert('Player updated successfully! Analytics will reflect new data.', 'success');
           await DataManager.init(true);
           renderPlayers();
           UI.closeModal('playerModal');
@@ -510,6 +579,26 @@
           UI.showAlert(err.message || 'Failed to update player', 'danger');
         }
       }, { once: true });
+    }
+
+    function handleContextTypeChange() {
+      const contextType = document.getElementById('ratingContextType').value;
+      const contextDateGroup = document.getElementById('contextDateGroup');
+      const trainingTypeGroup = document.getElementById('trainingTypeGroup');
+
+      // Show date picker for training and game
+      if (contextType === 'training' || contextType === 'game') {
+        contextDateGroup.style.display = 'block';
+      } else {
+        contextDateGroup.style.display = 'none';
+      }
+
+      // Show training type for training sessions
+      if (contextType === 'training') {
+        trainingTypeGroup.style.display = 'block';
+      } else {
+        trainingTypeGroup.style.display = 'none';
+      }
     }
 
     async function deletePlayer(playerId) {
@@ -527,7 +616,7 @@
     async function openVideoModal(playerId) {
       const title = prompt('Video Title:');
       if (!title) return;
-      const url = prompt('Video URL (YouTube embed URL):');
+      const url = prompt('Video URL (YouTube, Vimeo, or embed URL):');
       if (!url) return;
 
       try {
@@ -557,6 +646,7 @@
     // Expose for inline handlers (modal buttons)
     window.openVideoModal = openVideoModal;
     window.removeVideo = removeVideo;
+    window.handleContextTypeChange = handleContextTypeChange;
 
     document.addEventListener('DOMContentLoaded', async () => {
       // Auth gate
