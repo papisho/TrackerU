@@ -70,20 +70,25 @@
     }
 
     .player-rank-list {
-      display: flex;
-      flex-direction: column;
+      display: grid;
       gap: var(--space-md);
     }
 
     .player-rank-item {
       background: white;
-      padding: var(--space-md);
+      padding: var(--space-lg);
       border-radius: var(--radius-md);
       display: flex;
       justify-content: space-between;
       align-items: center;
       box-shadow: var(--shadow-sm);
       border-left: 4px solid var(--primary);
+      transition: var(--transition);
+    }
+
+    .player-rank-item:hover {
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
     }
 
     .player-rank-item.top {
@@ -92,6 +97,42 @@
 
     .player-rank-item.attention {
       border-left-color: #e74c3c;
+    }
+
+    .player-rank-item.improved {
+      border-left-color: #3498db;
+    }
+
+    .player-selector {
+      background: white;
+      padding: var(--space-xl);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
+      margin-bottom: var(--space-xl);
+    }
+
+    .player-selector label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: var(--space-sm);
+      color: var(--gray-700);
+    }
+
+    .player-selector select {
+      width: 100%;
+      padding: var(--space-md);
+      border: 2px solid var(--gray-300);
+      border-radius: var(--radius-md);
+      font-size: var(--font-size-base);
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .player-selector select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-light);
     }
 
     @media (max-width: 768px) {
@@ -162,6 +203,19 @@
     <!-- Team Analytics Tab -->
     <div id="team-analytics-tab" class="tab-content">
       <h2 style="margin-bottom: var(--space-lg);">📊 Team Analytics & Insights</h2>
+      
+      <!-- Player Selector -->
+      <div class="player-selector">
+        <label for="playerAnalyticsSelect">🔍 View Detailed Player Analytics</label>
+        <select id="playerAnalyticsSelect" onchange="loadPlayerAnalytics(this.value)">
+          <option value="">-- Select a player --</option>
+        </select>
+      </div>
+
+      <!-- Player Analytics Container -->
+      <div id="playerAnalyticsContainer" style="display: none;"></div>
+
+      <!-- Team Analytics Container -->
       <div id="teamAnalyticsContainer"></div>
     </div>
 
@@ -259,6 +313,7 @@
     };
 
     let teamAnalyticsCharts = [];
+    let playerAnalyticsCharts = [];
 
     function switchTab(tabId) {
       document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -268,9 +323,173 @@
 
       // Load team analytics when that tab is opened
       if (tabId === 'team-analytics-tab') {
+        populatePlayerDropdown();
         loadTeamAnalytics();
       }
     }
+
+    function populatePlayerDropdown() {
+      const players = DataManager.getPlayers();
+      const select = document.getElementById('playerAnalyticsSelect');
+      
+      // Clear existing options except first
+      select.innerHTML = '<option value="">-- Select a player --</option>';
+      
+      // Sort players alphabetically
+      const sortedPlayers = players.sort((a, b) => {
+        const nameA = `${a.firstName} ${a.lastName}`.toLowerCase();
+        const nameB = `${b.firstName} ${b.lastName}`.toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+      
+      sortedPlayers.forEach(player => {
+        const option = document.createElement('option');
+        option.value = player.id;
+        option.textContent = `${player.firstName} ${player.lastName} - ${player.position} (#${player.jerseyNumber || '?'})`;
+        select.appendChild(option);
+      });
+    }
+
+    function loadPlayerAnalytics(playerId) {
+      const playerAnalyticsContainer = document.getElementById('playerAnalyticsContainer');
+      const teamAnalyticsContainer = document.getElementById('teamAnalyticsContainer');
+      
+      if (!playerId) {
+        playerAnalyticsContainer.style.display = 'none';
+        teamAnalyticsContainer.style.display = 'block';
+        return;
+      }
+
+      const player = DataManager.getPlayerById(playerId);
+      if (!player) return;
+
+      // Hide team analytics, show player analytics
+      teamAnalyticsContainer.style.display = 'none';
+      playerAnalyticsContainer.style.display = 'block';
+
+      // Clear old charts
+      playerAnalyticsCharts.forEach(chart => Analytics.destroyChart(chart));
+      playerAnalyticsCharts = [];
+
+      const analyticsData = Analytics.generateAnalyticsData(player);
+
+      if (!analyticsData.hasData) {
+        playerAnalyticsContainer.innerHTML = `
+          <div class="analytics-empty">
+            <div class="analytics-empty-icon">📊</div>
+            <h3 class="analytics-empty-title">No Analytics for ${player.firstName} ${player.lastName}</h3>
+            <p class="analytics-empty-text">${analyticsData.message}</p>
+          </div>
+        `;
+        return;
+      }
+
+      playerAnalyticsContainer.innerHTML = `
+        <div class="analytics-container">
+          <div class="analytics-header" style="margin-bottom: var(--space-xl);">
+            <h2 class="analytics-title">📈 ${player.firstName} ${player.lastName} - Detailed Analytics</h2>
+            <p style="color: var(--gray-600);">${player.position} · Jersey #${player.jerseyNumber || '?'}</p>
+          </div>
+
+          <!-- Stats Cards -->
+          <div class="analytics-stats">
+            <div class="stat-card">
+              <div class="stat-value">${analyticsData.stats.avgRating}</div>
+              <div class="stat-label">Overall Average</div>
+            </div>
+            <div class="stat-card success">
+              <div class="stat-value">${analyticsData.stats.improvementCount}</div>
+              <div class="stat-label">Skills Improving</div>
+            </div>
+            <div class="stat-card warning">
+              <div class="stat-value">${analyticsData.stats.totalRatings}</div>
+              <div class="stat-label">Total Ratings</div>
+            </div>
+            <div class="stat-card info">
+              <div class="stat-value">${analyticsData.stats.improvementRate}%</div>
+              <div class="stat-label">Improvement Rate</div>
+            </div>
+          </div>
+
+          <!-- Charts Grid -->
+          <div class="chart-grid">
+            <!-- Timeline Chart -->
+            <div class="chart-card chart-full-width">
+              <div class="chart-card-header">
+                <h3 class="chart-title">Performance Trends Over Time</h3>
+                <span class="chart-icon">📈</span>
+              </div>
+              <div class="chart-body">
+                <canvas id="playerTimelineChart" class="chart-canvas"></canvas>
+              </div>
+            </div>
+
+            <!-- Radar Chart -->
+            <div class="chart-card">
+              <div class="chart-card-header">
+                <h3 class="chart-title">Category Breakdown</h3>
+                <span class="chart-icon">🎯</span>
+              </div>
+              <div class="chart-body">
+                <canvas id="playerRadarChart" class="chart-canvas"></canvas>
+              </div>
+            </div>
+
+            <!-- Distribution Chart -->
+            <div class="chart-card">
+              <div class="chart-card-header">
+                <h3 class="chart-title">Rating Distribution</h3>
+                <span class="chart-icon">📊</span>
+              </div>
+              <div class="chart-body">
+                <canvas id="playerDistributionChart" class="chart-canvas"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Progress List -->
+          <div class="metric-section">
+            <h3 style="margin-bottom: var(--space-lg);">📌 Biggest Changes</h3>
+            <div class="progress-list" id="playerProgressList"></div>
+          </div>
+        </div>
+      `;
+
+      // Create charts
+      setTimeout(() => {
+        playerAnalyticsCharts.push(Analytics.createTimelineChart('playerTimelineChart', player));
+        playerAnalyticsCharts.push(Analytics.createRadarChart('playerRadarChart', analyticsData.categoryAverages));
+        playerAnalyticsCharts.push(Analytics.createDistributionChart('playerDistributionChart', analyticsData.ratingDistribution));
+
+        // Render progress list
+        const progressList = document.getElementById('playerProgressList');
+        analyticsData.trends.slice(0, 10).forEach(trend => {
+          const trendClass = trend.trend;
+          const trendIcon = trend.change > 0 ? '↑' : trend.change < 0 ? '↓' : '→';
+          const trendColor = trend.change > 0 ? 'up' : trend.change < 0 ? 'down' : 'stable';
+          
+          progressList.innerHTML += `
+            <div class="progress-item ${trendClass}">
+              <div class="progress-header">
+                <span class="progress-name">${trend.label}</span>
+                <span class="progress-trend ${trendColor}">
+                  ${trendIcon} ${Math.abs(trend.change).toFixed(1)}
+                </span>
+              </div>
+              <div class="progress-bar-container">
+                <div class="progress-bar" style="width: ${(trend.lastRating / 10) * 100}%;"></div>
+              </div>
+              <div class="progress-details">
+                <span>From ${trend.firstRating}/10</span>
+                <span>Now ${trend.lastRating}/10</span>
+              </div>
+            </div>
+          `;
+        });
+      }, 100);
+    }
+
+    window.loadPlayerAnalytics = loadPlayerAnalytics;
 
     function computeStats(players) {
       document.getElementById('totalPlayers').textContent = players.length;
@@ -305,7 +524,7 @@
       });
 
       document.getElementById('totalVideos').textContent = totalVideos;
-      document.getElementById('avgPerformance').textContent = metricCount > 0 ? (totalPerformance / metricCount).toFixed(1) : 0;
+      document.getElementById('avgPerformance').textContent = metricCount > 0 ? (totalPerformance / metricCount).toFixed(1) : '0';
       document.getElementById('improvingPlayers').textContent = improvingPlayers;
     }
 
@@ -359,64 +578,62 @@
             </div>
           </div>
 
-          <!-- Player Rankings -->
-          <div class="grid grid-2">
+          <!-- Player Rankings Grid -->
+          <div class="grid grid-3" style="margin-bottom: var(--space-xl);">
             <!-- Top Performers -->
             <div class="metric-section">
-              <h3 style="margin-bottom: var(--space-lg);">🏆 Top Performers</h3>
+              <h3 style="margin-bottom: var(--space-lg); display: flex; align-items: center; gap: var(--space-sm);">🏆 Top Performers</h3>
               <div class="player-rank-list">
                 ${coachAnalytics.topPerformers.length > 0 ? coachAnalytics.topPerformers.map((p, idx) => `
                   <div class="player-rank-item top">
                     <div>
-                      <strong>#${idx + 1} ${p.name}</strong>
-                      <div style="font-size: var(--font-size-sm); color: var(--gray-600);">${p.position}</div>
+                      <div style="font-weight: 700; color: var(--gray-900);">#${idx + 1} ${p.name}</div>
+                      <div style="font-size: var(--font-size-sm); color: var(--gray-600); margin-top: 2px;">${p.position}</div>
                     </div>
                     <div>
-                      <span style="background: #2ecc71; color: white; padding: 4px 12px; border-radius: var(--radius-full); font-weight: 700;">${p.avgRating}/10</span>
+                      <span style="background: #2ecc71; color: white; padding: 6px 14px; border-radius: var(--radius-full); font-weight: 700; font-size: var(--font-size-sm);">${p.avgRating}/10</span>
                     </div>
                   </div>
-                `).join('') : '<p style="color: var(--gray-500); text-align: center;">No data available</p>'}
+                `).join('') : '<p style="color: var(--gray-500); text-align: center; padding: var(--space-lg); font-style: italic;">No data available</p>'}
               </div>
             </div>
 
             <!-- Most Improved -->
             <div class="metric-section">
-              <h3 style="margin-bottom: var(--space-lg);">📈 Most Improved</h3>
+              <h3 style="margin-bottom: var(--space-lg); display: flex; align-items: center; gap: var(--space-sm);">📈 Most Improved</h3>
               <div class="player-rank-list">
                 ${coachAnalytics.mostImproved.length > 0 ? coachAnalytics.mostImproved.map((p, idx) => `
-                  <div class="player-rank-item">
+                  <div class="player-rank-item improved">
                     <div>
-                      <strong>#${idx + 1} ${p.name}</strong>
-                      <div style="font-size: var(--font-size-sm); color: var(--gray-600);">${p.position}</div>
+                      <div style="font-weight: 700; color: var(--gray-900);">#${idx + 1} ${p.name}</div>
+                      <div style="font-size: var(--font-size-sm); color: var(--gray-600); margin-top: 2px;">${p.position}</div>
                     </div>
                     <div>
-                      <span style="background: #3498db; color: white; padding: 4px 12px; border-radius: var(--radius-full); font-weight: 700;">+${p.improvementRate}%</span>
+                      <span style="background: #3498db; color: white; padding: 6px 14px; border-radius: var(--radius-full); font-weight: 700; font-size: var(--font-size-sm);">+${p.improvementRate}%</span>
                     </div>
                   </div>
-                `).join('') : '<p style="color: var(--gray-500); text-align: center;">No improvement data yet</p>'}
+                `).join('') : '<p style="color: var(--gray-500); text-align: center; padding: var(--space-lg); font-style: italic;">No improvement data yet</p>'}
+              </div>
+            </div>
+
+            <!-- Needs Attention -->
+            <div class="metric-section">
+              <h3 style="margin-bottom: var(--space-lg); display: flex; align-items: center; gap: var(--space-sm);">⚠️ Needs Attention</h3>
+              <div class="player-rank-list">
+                ${coachAnalytics.needsAttention.length > 0 ? coachAnalytics.needsAttention.map((p) => `
+                  <div class="player-rank-item attention">
+                    <div>
+                      <div style="font-weight: 700; color: var(--gray-900);">${p.name}</div>
+                      <div style="font-size: var(--font-size-sm); color: var(--gray-600); margin-top: 2px;">${p.position} · ${p.avgRating}/10</div>
+                    </div>
+                    <div>
+                      <span style="background: #e74c3c; color: white; padding: 6px 14px; border-radius: var(--radius-full); font-weight: 700; font-size: var(--font-size-sm);">Focus</span>
+                    </div>
+                  </div>
+                `).join('') : '<p style="color: var(--gray-500); text-align: center; padding: var(--space-lg); font-style: italic;">All players performing well!</p>'}
               </div>
             </div>
           </div>
-
-          <!-- Needs Attention -->
-          ${coachAnalytics.needsAttention.length > 0 ? `
-            <div class="metric-section">
-              <h3 style="margin-bottom: var(--space-lg);">⚠️ Players Needing Extra Attention</h3>
-              <div class="player-rank-list">
-                ${coachAnalytics.needsAttention.map((p) => `
-                  <div class="player-rank-item attention">
-                    <div>
-                      <strong>${p.name}</strong>
-                      <div style="font-size: var(--font-size-sm); color: var(--gray-600);">${p.position} - Avg: ${p.avgRating}/10</div>
-                    </div>
-                    <div>
-                      <span style="background: #e74c3c; color: white; padding: 4px 12px; border-radius: var(--radius-full); font-size: var(--font-size-sm);">Needs Work</span>
-                    </div>
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-          ` : ''}
 
           <!-- Focus Areas -->
           <div class="metric-section">
@@ -431,10 +648,10 @@
                 };
                 const color = avg >= 7 ? '#2ecc71' : avg >= 5 ? '#f39c12' : '#e74c3c';
                 return `
-                  <div style="background: var(--gray-50); padding: var(--space-md); border-radius: var(--radius-md); border-left: 4px solid ${color};">
+                  <div style="background: white; padding: var(--space-lg); border-radius: var(--radius-md); border-left: 4px solid ${color}; box-shadow: var(--shadow-sm);">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                      <span style="font-weight: 600;">${labels[cat] || cat}</span>
-                      <span style="background: ${color}; color: white; padding: 4px 12px; border-radius: var(--radius-full); font-weight: 700;">${avg}/10</span>
+                      <span style="font-weight: 600; font-size: var(--font-size-lg);">${labels[cat] || cat}</span>
+                      <span style="background: ${color}; color: white; padding: 8px 16px; border-radius: var(--radius-full); font-weight: 700;">${avg}/10</span>
                     </div>
                   </div>
                 `;
@@ -480,7 +697,7 @@
           });
         }
 
-        const avgLevel = totalMetrics > 0 ? (metricsSum / totalMetrics).toFixed(1) : 0;
+        const avgLevel = totalMetrics > 0 ? (metricsSum / totalMetrics).toFixed(1) : '0';
 
         const card = document.createElement('div');
         card.className = 'card';
@@ -527,7 +744,7 @@
       Object.entries(METRIC_CONFIG).forEach(([catKey, catCfg]) => {
         metrics[catKey] = {};
         Object.keys(catCfg.metrics).forEach(metricKey => {
-          metrics[catKey][metricKey] = { level: 5, comment: '', ratingHistory: [] };
+          metrics[catKey][metricKey] = { level: 0, comment: '', ratingHistory: [] };
         });
       });
       return metrics;
@@ -685,7 +902,7 @@
           </div>
 
           <h4 style="border-bottom: 2px solid var(--gray-200); padding-bottom: var(--space-md); margin-bottom: var(--space-md);">
-            Performance Metrics (1–10) & Comments
+            Performance Metrics (0–10) & Comments
           </h4>
       `;
 
@@ -696,14 +913,14 @@
 
         Object.entries(catCfg.metrics).forEach(([metricKey, metricLabel]) => {
           const current = playerCat[metricKey] || {};
-          const lvl = (typeof current.level === 'number') ? current.level : 5;
+          const lvl = (typeof current.level === 'number') ? current.level : 0;
           const cmt = current.comment || '';
           html += `
             <div class="form-group" style="margin-bottom: var(--space-md);">
               <label class="form-label">${metricLabel}</label>
               <div style="display:flex;align-items:center;gap:var(--space-md);margin-bottom:var(--space-xs);">
-                <input type="number" class="form-input" name="level-${catKey}-${metricKey}" min="1" max="10" value="${lvl}" style="max-width: 90px;" required>
-                <span style="font-size: var(--font-size-sm); color: var(--gray-600);">1 = needs lots of work, 10 = elite</span>
+                <input type="number" class="form-input" name="level-${catKey}-${metricKey}" min="0" max="10" value="${lvl}" style="max-width: 90px;" required>
+                <span style="font-size: var(--font-size-sm); color: var(--gray-600);">0 = not rated, 1 = needs lots of work, 10 = elite</span>
               </div>
               <textarea class="form-input" name="comment-${catKey}-${metricKey}" rows="2" placeholder="Coach comment for this area...">${cmt}</textarea>
             </div>
@@ -739,8 +956,8 @@
             const levelInput = form.querySelector(`[name="level-${catKey}-${metricKey}"]`);
             const commentInput = form.querySelector(`[name="comment-${catKey}-${metricKey}"]`);
             let level = parseInt(levelInput.value, 10);
-            if (Number.isNaN(level)) level = 5;
-            if (level < 1) level = 1;
+            if (Number.isNaN(level)) level = 0;
+            if (level < 0) level = 0;
             if (level > 10) level = 10;
 
             updatedMetrics[catKey][metricKey] = {
