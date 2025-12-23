@@ -6,6 +6,7 @@
   <title>Admin Dashboard - TrackerU</title>
   <link rel="stylesheet" href="css/styles.css">
   <link rel="stylesheet" href="css/analytics.css">
+  <link rel="stylesheet" href="css/rewards.css">
   <style>
     .dashboard-header {
       background: linear-gradient(135deg, var(--primary), #0f172a);
@@ -91,17 +92,9 @@
       transform: translateY(-2px);
     }
 
-    .player-rank-item.top {
-      border-left-color: #2ecc71;
-    }
-
-    .player-rank-item.attention {
-      border-left-color: #e74c3c;
-    }
-
-    .player-rank-item.improved {
-      border-left-color: #3498db;
-    }
+    .player-rank-item.top { border-left-color: #2ecc71; }
+    .player-rank-item.attention { border-left-color: #e74c3c; }
+    .player-rank-item.improved { border-left-color: #3498db; }
 
     .player-selector {
       background: white;
@@ -136,9 +129,7 @@
     }
 
     @media (max-width: 768px) {
-      .context-grid {
-        grid-template-columns: 1fr;
-      }
+      .context-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -153,6 +144,7 @@
       <ul class="navbar-menu">
         <li><a href="index.html">Home</a></li>
         <li><a href="admin-dashboard.html" class="active">Dashboard</a></li>
+        <li><a href="rewards-leaderboard.html">Leaderboard</a></li>
         <li><a href="#" id="logoutLink" style="cursor: pointer;">Logout</a></li>
       </ul>
     </div>
@@ -162,7 +154,7 @@
   <div class="dashboard-header">
     <div class="container">
       <h1>👋 Welcome Coach!</h1>
-      <p>Manage your players, metrics, and training content</p>
+      <p>Manage your players, metrics, attendance, and rewards</p>
     </div>
   </div>
 
@@ -185,11 +177,17 @@
         <div class="stat-number" id="improvingPlayers">0</div>
         <div class="stat-label">Players Improving</div>
       </div>
+      <div class="stat-card" style="background: linear-gradient(135deg, #ffd700, #ffa500); color: white;">
+        <div class="stat-number" style="color: white;" id="totalPoints">0</div>
+        <div class="stat-label" style="color: rgba(255,255,255,0.9);">Team Points</div>
+      </div>
     </div>
 
     <!-- Tab Navigation -->
     <div class="sidebar-tabs">
       <button class="tab-btn active" data-tab="players-tab">👥 Players</button>
+      <button class="tab-btn" data-tab="attendance-tab">✅ Attendance</button>
+      <button class="tab-btn" data-tab="rewards-tab">🎯 Rewards Settings</button>
       <button class="tab-btn" data-tab="team-analytics-tab">📊 Team Analytics</button>
       <button class="tab-btn" data-tab="add-player-tab">➕ Add Player</button>
     </div>
@@ -198,6 +196,58 @@
     <div id="players-tab" class="tab-content active">
       <h2 style="margin-bottom: var(--space-lg);">Player Management</h2>
       <div id="playersList"></div>
+    </div>
+
+    <!-- Attendance Tab -->
+    <div id="attendance-tab" class="tab-content">
+      <div class="attendance-calendar">
+        <div class="attendance-header">
+          <h2>✅ Take Attendance</h2>
+          <div class="attendance-controls">
+            <input type="date" id="attendanceDate" class="form-input" style="width: auto;">
+            <select id="sessionType" class="form-select" style="width: auto;">
+              <option value="training">Training Session</option>
+              <option value="game">Game/Match</option>
+              <option value="scrimmage">Scrimmage</option>
+              <option value="conditioning">Conditioning</option>
+            </select>
+            <button class="btn btn-success" onclick="saveAttendance()">💾 Save Attendance</button>
+          </div>
+        </div>
+        <div class="attendance-grid" id="attendanceGrid"></div>
+      </div>
+
+      <!-- Attendance History -->
+      <div class="metric-section" style="margin-top: var(--space-xl);">
+        <h3 style="margin-bottom: var(--space-lg);">📅 Recent Sessions</h3>
+        <div id="attendanceHistory"></div>
+      </div>
+    </div>
+
+    <!-- Rewards Settings Tab -->
+    <div id="rewards-tab" class="tab-content">
+      <div class="rewards-settings">
+        <h2 style="margin-bottom: var(--space-lg);">🎯 Rewards System Settings</h2>
+        
+        <!-- Toggle Rewards -->
+        <div class="rewards-toggle">
+          <div>
+            <h4 style="margin-bottom: var(--space-xs);">Enable Physical Rewards</h4>
+            <p style="color: var(--gray-600); font-size: var(--font-size-sm); margin: 0;">Turn off if you can't afford physical rewards. Badges will always be visible.</p>
+          </div>
+          <div class="toggle-switch" id="rewardsToggle" onclick="toggleRewards()">
+          </div>
+        </div>
+
+        <!-- Custom Rewards List -->
+        <div style="margin-top: var(--space-xl);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-lg);">
+            <h3>Custom Rewards</h3>
+            <button class="btn btn-primary" onclick="addCustomReward()">+ Add Reward</button>
+          </div>
+          <div class="custom-rewards-list" id="customRewardsList"></div>
+        </div>
+      </div>
     </div>
 
     <!-- Team Analytics Tab -->
@@ -271,6 +321,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
   <script src="js/app.js"></script>
   <script src="js/analytics.js"></script>
+  <script src="js/rewards.js"></script>
 
   <script>
     const METRIC_CONFIG = {
@@ -314,6 +365,8 @@
 
     let teamAnalyticsCharts = [];
     let playerAnalyticsCharts = [];
+    let attendanceState = {};
+    let teamSettings = { rewardsEnabled: true, customRewards: [] };
 
     function switchTab(tabId) {
       document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -321,21 +374,240 @@
       document.getElementById(tabId).classList.add('active');
       document.querySelector(`.tab-btn[data-tab="${tabId}"]`).classList.add('active');
 
-      // Load team analytics when that tab is opened
       if (tabId === 'team-analytics-tab') {
         populatePlayerDropdown();
         loadTeamAnalytics();
+      } else if (tabId === 'attendance-tab') {
+        loadAttendanceTab();
+      } else if (tabId === 'rewards-tab') {
+        loadRewardsSettings();
       }
     }
+
+    function loadAttendanceTab() {
+      // Set today's date
+      document.getElementById('attendanceDate').value = new Date().toISOString().split('T')[0];
+      
+      const players = DataManager.getPlayers();
+      const grid = document.getElementById('attendanceGrid');
+      grid.innerHTML = '';
+
+      // Initialize attendance state
+      attendanceState = {};
+      players.forEach(player => {
+        attendanceState[player.id] = null; // null = unmarked, true = present, false = absent
+      });
+
+      players.forEach(player => {
+        const card = document.createElement('div');
+        card.className = 'attendance-player-card';
+        card.id = `attendance-${player.id}`;
+        card.innerHTML = `
+          <div class="attendance-player-name">${player.firstName} ${player.lastName}</div>
+          <div class="attendance-toggle">
+            <button class="attendance-btn present" onclick="markAttendance('${player.id}', true)">Present</button>
+            <button class="attendance-btn absent" onclick="markAttendance('${player.id}', false)">Absent</button>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+
+      loadAttendanceHistory();
+    }
+
+    function markAttendance(playerId, isPresent) {
+      attendanceState[playerId] = isPresent;
+      const card = document.getElementById(`attendance-${playerId}`);
+      card.className = 'attendance-player-card ' + (isPresent ? 'present' : 'absent');
+      
+      const buttons = card.querySelectorAll('.attendance-btn');
+      buttons.forEach(btn => btn.classList.remove('active'));
+      buttons[isPresent ? 0 : 1].classList.add('active');
+    }
+
+    async function saveAttendance() {
+      const date = document.getElementById('attendanceDate').value;
+      const sessionType = document.getElementById('sessionType').value;
+
+      if (!date) {
+        UI.showAlert('Please select a date', 'danger');
+        return;
+      }
+
+      const unmarked = Object.values(attendanceState).filter(v => v === null).length;
+      if (unmarked > 0) {
+        if (!confirm(`${unmarked} players are unmarked. Continue?`)) return;
+      }
+
+      try {
+        const players = DataManager.getPlayers();
+        for (const player of players) {
+          const isPresent = attendanceState[player.id];
+          if (isPresent !== null) {
+            await Rewards.recordAttendance(player.id, date, isPresent, sessionType);
+          }
+        }
+
+        UI.showAlert('Attendance saved successfully!', 'success');
+        await DataManager.init(true);
+        loadAttendanceTab();
+        computeStats(DataManager.getPlayers());
+      } catch (err) {
+        UI.showAlert(err.message || 'Failed to save attendance', 'danger');
+      }
+    }
+
+    function loadAttendanceHistory() {
+      const container = document.getElementById('attendanceHistory');
+      const players = DataManager.getPlayers();
+
+      // Gather all attendance records
+      const allRecords = [];
+      players.forEach(player => {
+        if (player.rewards?.attendance) {
+          player.rewards.attendance.forEach(record => {
+            allRecords.push({
+              ...record,
+              playerName: `${player.firstName} ${player.lastName}`
+            });
+          });
+        }
+      });
+
+      // Sort by date (most recent first)
+      allRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      if (allRecords.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: var(--gray-500); padding: var(--space-xl);">No attendance records yet.</p>';
+        return;
+      }
+
+      // Group by date and session
+      const sessions = {};
+      allRecords.forEach(record => {
+        const key = `${record.date}-${record.sessionType || 'training'}`;
+        if (!sessions[key]) {
+          sessions[key] = {
+            date: record.date,
+            sessionType: record.sessionType || 'training',
+            present: [],
+            absent: []
+          };
+        }
+        if (record.present) {
+          sessions[key].present.push(record.playerName);
+        } else {
+          sessions[key].absent.push(record.playerName);
+        }
+      });
+
+      container.innerHTML = '';
+      Object.values(sessions).slice(0, 10).forEach(session => {
+        const div = document.createElement('div');
+        div.style.cssText = 'background: white; padding: var(--space-lg); border-radius: var(--radius-md); margin-bottom: var(--space-md); box-shadow: var(--shadow-sm);';
+        div.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
+            <div>
+              <strong style="font-size: var(--font-size-lg);">${UI.formatDate(session.date)}</strong>
+              <span style="margin-left: var(--space-md); color: var(--gray-600); text-transform: capitalize;">${session.sessionType}</span>
+            </div>
+            <div>
+              <span style="background: var(--success); color: white; padding: 4px 12px; border-radius: var(--radius-full); margin-right: var(--space-sm);">
+                ${session.present.length} present
+              </span>
+              <span style="background: var(--danger); color: white; padding: 4px 12px; border-radius: var(--radius-full);">
+                ${session.absent.length} absent
+              </span>
+            </div>
+          </div>
+          ${session.present.length > 0 ? `<div style="font-size: var(--font-size-sm); color: var(--gray-600);"><strong>Present:</strong> ${session.present.join(', ')}</div>` : ''}
+          ${session.absent.length > 0 ? `<div style="font-size: var(--font-size-sm); color: var(--gray-600); margin-top: var(--space-xs);"><strong>Absent:</strong> ${session.absent.join(', ')}</div>` : ''}
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function loadRewardsSettings() {
+      // Load settings from localStorage
+      const saved = localStorage.getItem('teamSettings');
+      if (saved) {
+        teamSettings = JSON.parse(saved);
+      }
+
+      // Update toggle
+      const toggle = document.getElementById('rewardsToggle');
+      toggle.className = teamSettings.rewardsEnabled ? 'toggle-switch active' : 'toggle-switch';
+
+      // Render custom rewards
+      renderCustomRewards();
+    }
+
+    function toggleRewards() {
+      teamSettings.rewardsEnabled = !teamSettings.rewardsEnabled;
+      localStorage.setItem('teamSettings', JSON.stringify(teamSettings));
+      loadRewardsSettings();
+      UI.showAlert(`Rewards ${teamSettings.rewardsEnabled ? 'enabled' : 'disabled'}`, 'success');
+    }
+
+    function addCustomReward() {
+      const name = prompt('Reward Name:');
+      if (!name) return;
+      const cost = prompt('Points Cost:');
+      if (!cost) return;
+      const description = prompt('Description (optional):');
+
+      teamSettings.customRewards.push({
+        id: Date.now().toString(),
+        name,
+        cost: parseInt(cost, 10),
+        description: description || ''
+      });
+
+      localStorage.setItem('teamSettings', JSON.stringify(teamSettings));
+      renderCustomRewards();
+    }
+
+    function removeCustomReward(rewardId) {
+      if (!confirm('Remove this reward?')) return;
+      teamSettings.customRewards = teamSettings.customRewards.filter(r => r.id !== rewardId);
+      localStorage.setItem('teamSettings', JSON.stringify(teamSettings));
+      renderCustomRewards();
+    }
+
+    function renderCustomRewards() {
+      const container = document.getElementById('customRewardsList');
+      if (teamSettings.customRewards.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: var(--gray-500); padding: var(--space-xl); font-style: italic;">No custom rewards yet. Click "Add Reward" to create one.</p>';
+        return;
+      }
+
+      container.innerHTML = '';
+      teamSettings.customRewards.forEach(reward => {
+        const item = document.createElement('div');
+        item.className = 'custom-reward-item';
+        item.innerHTML = `
+          <div class="custom-reward-info">
+            <div class="custom-reward-name">${reward.name}</div>
+            <div class="custom-reward-meta">${reward.cost} points ${reward.description ? '· ' + reward.description : ''}</div>
+          </div>
+          <button class="btn btn-danger btn-sm" onclick="removeCustomReward('${reward.id}')">Remove</button>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    window.markAttendance = markAttendance;
+    window.saveAttendance = saveAttendance;
+    window.toggleRewards = toggleRewards;
+    window.addCustomReward = addCustomReward;
+    window.removeCustomReward = removeCustomReward;
 
     function populatePlayerDropdown() {
       const players = DataManager.getPlayers();
       const select = document.getElementById('playerAnalyticsSelect');
       
-      // Clear existing options except first
       select.innerHTML = '<option value="">-- Select a player --</option>';
       
-      // Sort players alphabetically
       const sortedPlayers = players.sort((a, b) => {
         const nameA = `${a.firstName} ${a.lastName}`.toLowerCase();
         const nameB = `${b.firstName} ${b.lastName}`.toLowerCase();
@@ -363,11 +635,9 @@
       const player = DataManager.getPlayerById(playerId);
       if (!player) return;
 
-      // Hide team analytics, show player analytics
       teamAnalyticsContainer.style.display = 'none';
       playerAnalyticsContainer.style.display = 'block';
 
-      // Clear old charts
       playerAnalyticsCharts.forEach(chart => Analytics.destroyChart(chart));
       playerAnalyticsCharts = [];
 
@@ -391,7 +661,6 @@
             <p style="color: var(--gray-600);">${player.position} · Jersey #${player.jerseyNumber || '?'}</p>
           </div>
 
-          <!-- Stats Cards -->
           <div class="analytics-stats">
             <div class="stat-card">
               <div class="stat-value">${analyticsData.stats.avgRating}</div>
@@ -411,9 +680,7 @@
             </div>
           </div>
 
-          <!-- Charts Grid -->
           <div class="chart-grid">
-            <!-- Timeline Chart -->
             <div class="chart-card chart-full-width">
               <div class="chart-card-header">
                 <h3 class="chart-title">Performance Trends Over Time</h3>
@@ -424,7 +691,6 @@
               </div>
             </div>
 
-            <!-- Radar Chart -->
             <div class="chart-card">
               <div class="chart-card-header">
                 <h3 class="chart-title">Category Breakdown</h3>
@@ -435,7 +701,6 @@
               </div>
             </div>
 
-            <!-- Distribution Chart -->
             <div class="chart-card">
               <div class="chart-card-header">
                 <h3 class="chart-title">Rating Distribution</h3>
@@ -447,7 +712,6 @@
             </div>
           </div>
 
-          <!-- Progress List -->
           <div class="metric-section">
             <h3 style="margin-bottom: var(--space-lg);">📌 Biggest Changes</h3>
             <div class="progress-list" id="playerProgressList"></div>
@@ -455,13 +719,11 @@
         </div>
       `;
 
-      // Create charts
       setTimeout(() => {
         playerAnalyticsCharts.push(Analytics.createTimelineChart('playerTimelineChart', player));
         playerAnalyticsCharts.push(Analytics.createRadarChart('playerRadarChart', analyticsData.categoryAverages));
         playerAnalyticsCharts.push(Analytics.createDistributionChart('playerDistributionChart', analyticsData.ratingDistribution));
 
-        // Render progress list
         const progressList = document.getElementById('playerProgressList');
         analyticsData.trends.slice(0, 10).forEach(trend => {
           const trendClass = trend.trend;
@@ -498,9 +760,11 @@
       let totalPerformance = 0;
       let metricCount = 0;
       let improvingPlayers = 0;
+      let totalPoints = 0;
 
       players.forEach(p => {
         totalVideos += Array.isArray(p.assignedVideos) ? p.assignedVideos.length : 0;
+        totalPoints += (p.rewards?.totalPoints || 0);
         
         let playerImproving = false;
         if (p.metrics) {
@@ -511,7 +775,6 @@
                 metricCount++;
               }
 
-              // Check if player has improving metrics
               if (metric && Array.isArray(metric.ratingHistory) && metric.ratingHistory.length >= 2) {
                 const first = metric.ratingHistory[0].level;
                 const last = metric.ratingHistory[metric.ratingHistory.length - 1].level;
@@ -526,13 +789,13 @@
       document.getElementById('totalVideos').textContent = totalVideos;
       document.getElementById('avgPerformance').textContent = metricCount > 0 ? (totalPerformance / metricCount).toFixed(1) : '0';
       document.getElementById('improvingPlayers').textContent = improvingPlayers;
+      document.getElementById('totalPoints').textContent = totalPoints;
     }
 
     function loadTeamAnalytics() {
       const players = DataManager.getPlayers();
       const container = document.getElementById('teamAnalyticsContainer');
 
-      // Destroy old charts
       teamAnalyticsCharts.forEach(chart => Analytics.destroyChart(chart));
       teamAnalyticsCharts = [];
 
@@ -551,7 +814,6 @@
 
       container.innerHTML = `
         <div class="analytics-container">
-          <!-- Team Stats Cards -->
           <div class="analytics-stats">
             <div class="stat-card">
               <div class="stat-value">${coachAnalytics.avgTeamRating}</div>
@@ -567,7 +829,6 @@
             </div>
           </div>
 
-          <!-- Team Overview Chart -->
           <div class="chart-card chart-full-width">
             <div class="chart-card-header">
               <h3 class="chart-title">Team Performance by Category</h3>
@@ -578,9 +839,7 @@
             </div>
           </div>
 
-          <!-- Player Rankings Grid -->
           <div class="grid grid-3" style="margin-bottom: var(--space-xl);">
-            <!-- Top Performers -->
             <div class="metric-section">
               <h3 style="margin-bottom: var(--space-lg); display: flex; align-items: center; gap: var(--space-sm);">🏆 Top Performers</h3>
               <div class="player-rank-list">
@@ -598,7 +857,6 @@
               </div>
             </div>
 
-            <!-- Most Improved -->
             <div class="metric-section">
               <h3 style="margin-bottom: var(--space-lg); display: flex; align-items: center; gap: var(--space-sm);">📈 Most Improved</h3>
               <div class="player-rank-list">
@@ -616,7 +874,6 @@
               </div>
             </div>
 
-            <!-- Needs Attention -->
             <div class="metric-section">
               <h3 style="margin-bottom: var(--space-lg); display: flex; align-items: center; gap: var(--space-sm);">⚠️ Needs Attention</h3>
               <div class="player-rank-list">
@@ -635,7 +892,6 @@
             </div>
           </div>
 
-          <!-- Focus Areas -->
           <div class="metric-section">
             <h3 style="margin-bottom: var(--space-lg);">🎯 Team Focus Areas</h3>
             <div class="grid grid-2">
@@ -661,7 +917,6 @@
         </div>
       `;
 
-      // Create team overview chart
       setTimeout(() => {
         teamAnalyticsCharts.push(Analytics.createTeamOverviewChart('teamOverviewChart', coachAnalytics));
       }, 100);
@@ -670,6 +925,13 @@
     function renderPlayers() {
       const players = DataManager.getPlayers();
       const playersList = document.getElementById('playersList');
+
+      // Initialize rewards for all players
+      players.forEach(player => {
+        if (!player.rewards) {
+          Rewards.initializePlayerRewards(player);
+        }
+      });
 
       computeStats(players);
 
@@ -698,6 +960,7 @@
         }
 
         const avgLevel = totalMetrics > 0 ? (metricsSum / totalMetrics).toFixed(1) : '0';
+        const summary = Rewards.getRewardsSummary(player);
 
         const card = document.createElement('div');
         card.className = 'card';
@@ -723,6 +986,10 @@
               <div>
                 <p style="font-size:var(--font-size-sm);color:var(--gray-600);margin:0;">Videos</p>
                 <p style="font-size:20px;font-weight:700;color:var(--secondary);margin:0;">${Array.isArray(player.assignedVideos) ? player.assignedVideos.length : 0}</p>
+              </div>
+              <div>
+                <p style="font-size:var(--font-size-sm);color:var(--gray-600);margin:0;">Points</p>
+                <p style="font-size:20px;font-weight:700;color:#ffa500;margin:0;">${summary.totalPoints}</p>
               </div>
             </div>
           </div>
@@ -790,7 +1057,6 @@
         html += `</div>`;
       });
 
-      // Videos
       html += `<h4 style="border-bottom:2px solid var(--gray-200);padding-bottom:var(--space-md);margin:var(--space-lg) 0 var(--space-md);">Assigned Videos</h4>`;
 
       if (Array.isArray(player.assignedVideos) && player.assignedVideos.length) {
@@ -809,7 +1075,6 @@
         html += '<p style="color: var(--gray-500); font-style: italic;">No videos assigned yet.</p>';
       }
 
-      // AI Summary
       const aiSummary = AI.generatePlayerSummary(player);
       html += `
         <div style="margin-top: var(--space-xl); padding: var(--space-lg); border-radius: var(--radius-lg); background: var(--gray-50); border-left: 4px solid var(--primary);">
@@ -865,7 +1130,6 @@
             </div>
           </div>
 
-          <!-- Rating Context Section -->
           <div class="rating-context-section">
             <h4 style="margin-bottom: var(--space-md);">📋 Rating Context</h4>
             <p style="font-size: var(--font-size-sm); color: var(--gray-600); margin-bottom: var(--space-md);">Select the type of assessment you're recording:</p>
@@ -941,7 +1205,6 @@
       document.getElementById('playerDetails').innerHTML = html;
       UI.openModal('playerModal');
 
-      // Set today as default date
       document.getElementById('contextDate').value = new Date().toISOString().split('T')[0];
 
       document.getElementById('editPlayerForm').addEventListener('submit', async (e) => {
@@ -985,6 +1248,11 @@
 
         try {
           await DataManager.updatePlayer(playerId, updatedData);
+          
+          // Check for performance improvement and award points
+          const updatedPlayer = DataManager.getPlayerById(playerId);
+          await Rewards.checkPerformanceImprovement(updatedPlayer);
+          
           UI.showAlert('Player updated successfully! Analytics will reflect new data.', 'success');
           await DataManager.init(true);
           renderPlayers();
@@ -1000,14 +1268,12 @@
       const contextDateGroup = document.getElementById('contextDateGroup');
       const trainingTypeGroup = document.getElementById('trainingTypeGroup');
 
-      // Show date picker for training and game
       if (contextType === 'training' || contextType === 'game') {
         contextDateGroup.style.display = 'block';
       } else {
         contextDateGroup.style.display = 'none';
       }
 
-      // Show training type for training sessions
       if (contextType === 'training') {
         trainingTypeGroup.style.display = 'block';
       } else {
@@ -1057,33 +1323,27 @@
       }
     }
 
-    // Expose for inline handlers (modal buttons)
     window.openVideoModal = openVideoModal;
     window.removeVideo = removeVideo;
     window.handleContextTypeChange = handleContextTypeChange;
 
     document.addEventListener('DOMContentLoaded', async () => {
-      // Auth gate
       const ok = await Auth.checkAdminAuth();
       if (!ok) return;
 
-      // Tabs
       document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => switchTab(btn.getAttribute('data-tab')));
       });
 
-      // Logout
       document.getElementById('logoutLink').addEventListener('click', async (e) => {
         e.preventDefault();
         await Auth.logoutAdmin();
         window.location.href = 'index.html';
       });
 
-      // Initial load
       await DataManager.init(true);
       renderPlayers();
 
-      // Click handlers for player cards
       document.getElementById('playersList').addEventListener('click', (e) => {
         const btn = e.target.closest('button[data-action]');
         if (!btn) return;
@@ -1094,7 +1354,6 @@
         if (action === 'delete') deletePlayer(id);
       });
 
-      // Add player
       document.getElementById('addPlayerForm').addEventListener('submit', async (e) => {
         e.preventDefault();
 
