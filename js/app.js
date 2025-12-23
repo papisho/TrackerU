@@ -260,15 +260,19 @@ async getPlayerByCode(code) {
    */
   async updatePlayer(id, updates) {
     if (!supabaseClient) throw new Error('Supabase client not available.');
+    
+    const ratingContext = updates.ratingContext;
 
     // If updating metrics, add to history
     if (updates.metrics) {
       const player = this.getPlayerById(id);
       if (player && player.metrics) {
-        updates.metrics = this._addRatingHistory(player.metrics, updates.metrics, updates.ratingContext);
+        updates.metrics = this._addRatingHistory(player.metrics, updates.metrics, ratingContext);
       }
     }
 
+    delete updates.ratingContext;
+    
     const { data, error } = await supabaseClient
       .from('players')
       .update({ ...updates, updated_at: new Date().toISOString() })
