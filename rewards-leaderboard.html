@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rewards Leaderboard - TrackerU</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/rewards.css">
+    <style>
+        .leaderboard-header {
+            background: linear-gradient(135deg, #ffd700, #ffa500);
+            color: white;
+            padding: var(--space-2xl) 0;
+            margin-bottom: var(--space-xl);
+            text-align: center;
+        }
+
+        .leaderboard-header h1 {
+            color: white;
+            margin-bottom: var(--space-sm);
+            font-size: 42px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .filter-controls {
+            background: white;
+            padding: var(--space-lg);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            margin-bottom: var(--space-xl);
+            display: flex;
+            gap: var(--space-md);
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-controls select {
+            padding: var(--space-md);
+            border: 2px solid var(--gray-300);
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .filter-controls select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .podium {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: var(--space-lg);
+            margin-bottom: var(--space-2xl);
+        }
+
+        .podium-place {
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            padding: var(--space-xl);
+            text-align: center;
+            min-width: 200px;
+            transition: var(--transition);
+        }
+
+        .podium-place:hover {
+            transform: translateY(-8px);
+        }
+
+        .podium-place.first {
+            order: 2;
+            background: linear-gradient(135deg, #ffd700, #ffa500);
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .podium-place.second {
+            order: 1;
+            background: linear-gradient(135deg, #c0c0c0, #a8a8a8);
+            color: white;
+        }
+
+        .podium-place.third {
+            order: 3;
+            background: linear-gradient(135deg, #cd7f32, #b8692d);
+            color: white;
+        }
+
+        .podium-rank {
+            font-size: 64px;
+            font-weight: 900;
+            margin-bottom: var(--space-sm);
+        }
+
+        .podium-name {
+            font-size: var(--font-size-lg);
+            font-weight: 700;
+            margin-bottom: var(--space-xs);
+        }
+
+        .podium-points {
+            font-size: 32px;
+            font-weight: 900;
+            margin-top: var(--space-md);
+        }
+
+        .podium-badges {
+            margin-top: var(--space-sm);
+            font-size: var(--font-size-sm);
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand">
+                <div class="navbar-brand-icon">⚽</div>
+                <span>TrackerU</span>
+            </div>
+            <ul class="navbar-menu">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="admin-dashboard.html">Dashboard</a></li>
+                <li><a href="rewards-leaderboard.html" class="active">Leaderboard</a></li>
+                <li><a href="#" onclick="Auth.logoutAdmin()" style="cursor: pointer;">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Leaderboard Header -->
+    <div class="leaderboard-header">
+        <div class="container">
+            <h1>🏆 Rewards Leaderboard</h1>
+            <p style="font-size: var(--font-size-lg); opacity: 0.9;">Team Rankings & Achievements</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Filter Controls -->
+        <div class="filter-controls">
+            <label style="font-weight: 600; color: var(--gray-700);">Sort By:</label>
+            <select id="sortSelect" onchange="renderLeaderboard()">
+                <option value="points">Total Points</option>
+                <option value="badges">Total Badges</option>
+                <option value="videos">Videos Watched</option>
+                <option value="attendance">Attendance</option>
+                <option value="improvement">Performance Improvement</option>
+            </select>
+        </div>
+
+        <!-- Top 3 Podium -->
+        <div id="podiumContainer"></div>
+
+        <!-- Full Leaderboard -->
+        <div class="leaderboard">
+            <h3 style="margin-bottom: var(--space-lg);">📊 Full Rankings</h3>
+            <div id="leaderboardList"></div>
+        </div>
+
+        <!-- Badge Distribution -->
+        <div class="metric-section" style="margin-top: var(--space-2xl);">
+            <h3 style="margin-bottom: var(--space-lg);">🏅 Badge Distribution</h3>
+            <div class="badges-container" id="badgeDistribution"></div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="js/app.js"></script>
+    <script src="js/rewards.js"></script>
+    <script>
+        async function loadLeaderboard() {
+            await DataManager.init();
+            const players = DataManager.getPlayers();
+
+            // Initialize rewards for all players
+            players.forEach(player => {
+                if (!player.rewards) {
+                    Rewards.initializePlayerRewards(player);
+                }
+            });
+
+            renderLeaderboard();
+            renderBadgeDistribution();
+        }
+
+        function renderLeaderboard() {
+            const players = DataManager.getPlayers();
+            const sortBy = document.getElementById('sortSelect').value;
+
+            // Sort players
+            let sortedPlayers = [...players].sort((a, b) => {
+                switch(sortBy) {
+                    case 'points':
+                        return (b.rewards?.totalPoints || 0) - (a.rewards?.totalPoints || 0);
+                    case 'badges':
+                        return (b.rewards?.earnedBadges?.length || 0) - (a.rewards?.earnedBadges?.length || 0);
+                    case 'videos':
+                        return (b.rewards?.videosWatched?.length || 0) - (a.rewards?.videosWatched?.length || 0);
+                    case 'attendance':
+                        return (b.rewards?.attendance?.length || 0) - (a.rewards?.attendance?.length || 0);
+                    case 'improvement':
+                        return calculateImprovement(b) - calculateImprovement(a);
+                    default:
+                        return (b.rewards?.totalPoints || 0) - (a.rewards?.totalPoints || 0);
+                }
+            });
+
+            // Render podium (top 3)
+            renderPodium(sortedPlayers.slice(0, 3));
+
+            // Render full list
+            const leaderboardList = document.getElementById('leaderboardList');
+            leaderboardList.innerHTML = '';
+
+            sortedPlayers.forEach((player, index) => {
+                const summary = Rewards.getRewardsSummary(player);
+                const improvement = calculateImprovement(player);
+
+                const item = document.createElement('div');
+                item.className = 'leaderboard-item';
+                item.innerHTML = `
+                    <div class="leaderboard-rank ${index < 3 ? 'top-3' : ''}">#${index + 1}</div>
+                    <div class="leaderboard-player">
+                        <div class="leaderboard-player-name">${player.firstName} ${player.lastName}</div>
+                        <div class="leaderboard-player-stats">
+                            ${summary.badgeCount} badges · ${summary.videosWatched} videos · ${summary.attendanceCount} sessions · ${improvement}% improvement
+                        </div>
+                    </div>
+                    <div class="leaderboard-points">${summary.totalPoints}</div>
+                `;
+                leaderboardList.appendChild(item);
+            });
+        }
+
+        function renderPodium(topThree) {
+            const podiumContainer = document.getElementById('podiumContainer');
+            podiumContainer.className = 'podium';
+            podiumContainer.innerHTML = '';
+
+            const positions = ['second', 'first', 'third'];
+            const medals = ['🥈', '🥇', '🥉'];
+
+            topThree.forEach((player, index) => {
+                if (!player) return;
+
+                const summary = Rewards.getRewardsSummary(player);
+                const place = document.createElement('div');
+                place.className = `podium-place ${positions[index]}`;
+                place.innerHTML = `
+                    <div class="podium-rank">${medals[index]}</div>
+                    <div class="podium-name">${player.firstName} ${player.lastName}</div>
+                    <div style="font-size: var(--font-size-sm); opacity: 0.9;">${player.position}</div>
+                    <div class="podium-points">${summary.totalPoints} pts</div>
+                    <div class="podium-badges">${summary.badgeCount} badges earned</div>
+                `;
+                podiumContainer.appendChild(place);
+            });
+        }
+
+        function renderBadgeDistribution() {
+            const players = DataManager.getPlayers();
+            const badgeDistribution = document.getElementById('badgeDistribution');
+            badgeDistribution.innerHTML = '';
+
+            // Count how many players have each badge
+            const badgeCounts = {};
+            Object.values(Rewards.BADGES).forEach(badge => {
+                badgeCounts[badge.id] = 0;
+            });
+
+            players.forEach(player => {
+                if (player.rewards?.earnedBadges) {
+                    player.rewards.earnedBadges.forEach(badge => {
+                        if (badgeCounts[badge.id] !== undefined) {
+                            badgeCounts[badge.id]++;
+                        }
+                    });
+                }
+            });
+
+            // Render each badge with count
+            Object.values(Rewards.BADGES).forEach(badge => {
+                const count = badgeCounts[badge.id];
+                const card = document.createElement('div');
+                card.className = 'badge-card';
+                card.style.opacity = count > 0 ? '1' : '0.4';
+                card.innerHTML = `
+                    <div class="badge-icon">${badge.icon}</div>
+                    <div class="badge-name">${badge.name}</div>
+                    <div class="badge-description">${badge.description}</div>
+                    <div style="margin-top: var(--space-md); padding-top: var(--space-md); border-top: 2px solid var(--gray-200); font-weight: 700; color: var(--primary);">
+                        ${count} ${count === 1 ? 'player' : 'players'}
+                    </div>
+                `;
+                badgeDistribution.appendChild(card);
+            });
+        }
+
+        function calculateImprovement(player) {
+            if (!player.metrics) return 0;
+
+            let totalImprovement = 0;
+            let metricCount = 0;
+
+            Object.values(player.metrics).forEach(category => {
+                Object.values(category).forEach(metric => {
+                    if (metric.ratingHistory && metric.ratingHistory.length >= 2) {
+                        const first = metric.ratingHistory[0].level;
+                        const last = metric.ratingHistory[metric.ratingHistory.length - 1].level;
+                        if (first > 0) {
+                            const improvement = ((last - first) / first) * 100;
+                            totalImprovement += improvement;
+                            metricCount++;
+                        }
+                    }
+                });
+            });
+
+            return metricCount > 0 ? (totalImprovement / metricCount).toFixed(1) : 0;
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const ok = await Auth.checkAdminAuth();
+            if (!ok) return;
+            await loadLeaderboard();
+        });
+    </script>
+</body>
+</html>
