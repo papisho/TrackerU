@@ -1,0 +1,534 @@
+/* Rewards & Badges System Styles */
+
+/* Badges Display */
+.badges-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--space-md);
+  margin: var(--space-lg) 0;
+}
+
+.badge-card {
+  background: white;
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  text-align: center;
+  transition: var(--transition);
+  cursor: pointer;
+  position: relative;
+}
+
+.badge-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--primary);
+}
+
+.badge-card.earned {
+  background: linear-gradient(135deg, var(--primary-light), #f0f9ff);
+  border-color: var(--primary);
+}
+
+.badge-card.locked {
+  opacity: 0.5;
+  filter: grayscale(100%);
+}
+
+.badge-icon {
+  font-size: 48px;
+  margin-bottom: var(--space-sm);
+  display: block;
+}
+
+.badge-name {
+  font-weight: 700;
+  font-size: var(--font-size-sm);
+  color: var(--gray-900);
+  margin-bottom: var(--space-xs);
+}
+
+.badge-description {
+  font-size: var(--font-size-xs);
+  color: var(--gray-600);
+  line-height: 1.4;
+}
+
+.badge-earned-date {
+  font-size: var(--font-size-xs);
+  color: var(--primary);
+  margin-top: var(--space-sm);
+  font-weight: 600;
+}
+
+.badge-progress-bar {
+  width: 100%;
+  height: 6px;
+  background: var(--gray-200);
+  border-radius: var(--radius-full);
+  margin-top: var(--space-sm);
+  overflow: hidden;
+}
+
+.badge-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+  border-radius: var(--radius-full);
+  transition: width 0.3s ease;
+}
+
+/* Points Display */
+.points-banner {
+  background: linear-gradient(135deg, #ffd700, #ffa500);
+  color: white;
+  padding: var(--space-xl);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  margin-bottom: var(--space-xl);
+  box-shadow: var(--shadow-lg);
+}
+
+.points-value {
+  font-size: 48px;
+  font-weight: 900;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+}
+
+.points-label {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  margin-top: var(--space-sm);
+}
+
+.points-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-md);
+  margin-top: var(--space-lg);
+}
+
+.points-stat {
+  background: rgba(255, 255, 255, 0.2);
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(10px);
+}
+
+.points-stat-value {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+}
+
+.points-stat-label {
+  font-size: var(--font-size-sm);
+  margin-top: var(--space-xs);
+  opacity: 0.9;
+}
+
+/* Rewards Shop */
+.rewards-shop {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: var(--space-lg);
+  margin: var(--space-lg) 0;
+}
+
+.reward-card {
+  background: white;
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  transition: var(--transition);
+}
+
+.reward-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--secondary);
+}
+
+.reward-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  margin-bottom: var(--space-md);
+}
+
+.reward-name {
+  font-weight: 700;
+  font-size: var(--font-size-lg);
+  color: var(--gray-900);
+}
+
+.reward-cost {
+  background: var(--secondary);
+  color: white;
+  padding: var(--space-xs) var(--space-md);
+  border-radius: var(--radius-full);
+  font-weight: 700;
+  font-size: var(--font-size-sm);
+}
+
+.reward-description {
+  color: var(--gray-600);
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+  margin-bottom: var(--space-md);
+}
+
+.reward-claim-btn {
+  width: 100%;
+  background: var(--secondary);
+  color: white;
+  border: none;
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.reward-claim-btn:hover:not(:disabled) {
+  background: var(--primary);
+  transform: scale(1.02);
+}
+
+.reward-claim-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Attendance Tracking */
+.attendance-calendar {
+  background: white;
+  padding: var(--space-xl);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.attendance-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-lg);
+}
+
+.attendance-controls {
+  display: flex;
+  gap: var(--space-md);
+  align-items: center;
+}
+
+.attendance-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--space-md);
+}
+
+.attendance-player-card {
+  background: var(--gray-50);
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--gray-200);
+  transition: var(--transition);
+}
+
+.attendance-player-card.present {
+  background: var(--success-light);
+  border-color: var(--success);
+}
+
+.attendance-player-card.absent {
+  background: var(--danger-light);
+  border-color: var(--danger);
+}
+
+.attendance-player-name {
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--space-sm);
+  color: var(--gray-900);
+}
+
+.attendance-toggle {
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.attendance-btn {
+  flex: 1;
+  padding: var(--space-xs);
+  border: 1px solid var(--gray-300);
+  background: white;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.attendance-btn.active {
+  color: white;
+}
+
+.attendance-btn.present.active {
+  background: var(--success);
+  border-color: var(--success);
+}
+
+.attendance-btn.absent.active {
+  background: var(--danger);
+  border-color: var(--danger);
+}
+
+/* Streak Display */
+.streak-display {
+  background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
+  color: white;
+  padding: var(--space-lg);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  margin: var(--space-lg) 0;
+  box-shadow: var(--shadow-md);
+}
+
+.streak-icon {
+  font-size: 64px;
+  margin-bottom: var(--space-md);
+}
+
+.streak-value {
+  font-size: 36px;
+  font-weight: 900;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+}
+
+.streak-label {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  margin-top: var(--space-sm);
+}
+
+/* Rewards Settings (Coach) */
+.rewards-settings {
+  background: white;
+  padding: var(--space-xl);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  margin-bottom: var(--space-xl);
+}
+
+.rewards-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-lg);
+  background: var(--gray-50);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-lg);
+}
+
+.toggle-switch {
+  position: relative;
+  width: 60px;
+  height: 30px;
+  background: var(--gray-300);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.toggle-switch.active {
+  background: var(--success);
+}
+
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  background: white;
+  border-radius: 50%;
+  transition: var(--transition);
+}
+
+.toggle-switch.active::after {
+  left: 33px;
+}
+
+.custom-rewards-list {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.custom-reward-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-md);
+  background: var(--gray-50);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--gray-200);
+}
+
+.custom-reward-info {
+  flex: 1;
+}
+
+.custom-reward-name {
+  font-weight: 600;
+  color: var(--gray-900);
+  margin-bottom: var(--space-xs);
+}
+
+.custom-reward-meta {
+  font-size: var(--font-size-sm);
+  color: var(--gray-600);
+}
+
+/* Leaderboard */
+.leaderboard {
+  background: white;
+  padding: var(--space-xl);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.leaderboard-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-md);
+  border-bottom: 1px solid var(--gray-200);
+  transition: var(--transition);
+}
+
+.leaderboard-item:hover {
+  background: var(--gray-50);
+}
+
+.leaderboard-item:last-child {
+  border-bottom: none;
+}
+
+.leaderboard-rank {
+  font-size: var(--font-size-xl);
+  font-weight: 900;
+  color: var(--gray-400);
+  min-width: 50px;
+  text-align: center;
+}
+
+.leaderboard-rank.top-3 {
+  color: var(--primary);
+}
+
+.leaderboard-player {
+  flex: 1;
+  margin: 0 var(--space-md);
+}
+
+.leaderboard-player-name {
+  font-weight: 700;
+  color: var(--gray-900);
+  margin-bottom: var(--space-xs);
+}
+
+.leaderboard-player-stats {
+  font-size: var(--font-size-sm);
+  color: var(--gray-600);
+}
+
+.leaderboard-points {
+  font-size: var(--font-size-xl);
+  font-weight: 900;
+  color: var(--secondary);
+}
+
+/* Milestone Progress */
+.milestone-card {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  color: white;
+  padding: var(--space-xl);
+  border-radius: var(--radius-lg);
+  margin: var(--space-lg) 0;
+  box-shadow: var(--shadow-lg);
+}
+
+.milestone-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-md);
+}
+
+.milestone-icon {
+  font-size: 48px;
+}
+
+.milestone-info {
+  flex: 1;
+  margin-left: var(--space-lg);
+}
+
+.milestone-title {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  margin-bottom: var(--space-xs);
+}
+
+.milestone-description {
+  font-size: var(--font-size-sm);
+  opacity: 0.9;
+}
+
+.milestone-progress {
+  margin-top: var(--space-lg);
+}
+
+.milestone-progress-bar {
+  width: 100%;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.milestone-progress-fill {
+  height: 100%;
+  background: white;
+  border-radius: var(--radius-full);
+  transition: width 0.5s ease;
+}
+
+.milestone-progress-text {
+  text-align: center;
+  margin-top: var(--space-sm);
+  font-weight: 700;
+  font-size: var(--font-size-lg);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .badges-container {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
+
+  .badge-icon {
+    font-size: 36px;
+  }
+
+  .points-value {
+    font-size: 36px;
+  }
+
+  .rewards-shop {
+    grid-template-columns: 1fr;
+  }
+
+  .attendance-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
+}
