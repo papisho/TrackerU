@@ -6,6 +6,7 @@
     <title>Player Profile - TrackerU</title>
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/analytics.css">
+    <link rel="stylesheet" href="css/rewards.css">
     <style>
         .profile-header {
             background: linear-gradient(135deg, var(--primary), #0f172a);
@@ -16,7 +17,7 @@
         
         .profile-info {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: var(--space-lg);
             margin-bottom: var(--space-xl);
         }
@@ -180,7 +181,7 @@
 
     <div class="container">
         <!-- Player Info -->
-        <div class="profile-info">
+        <div class="profile-info" id="profileInfo">
             <div class="info-card">
                 <div class="info-label">Position</div>
                 <div class="info-value" id="position">-</div>
@@ -206,6 +207,7 @@
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('metrics-tab')">📊 Performance Metrics</button>
             <button class="tab-btn" onclick="switchTab('analytics-tab')">📈 Analytics</button>
+            <button class="tab-btn" onclick="switchTab('rewards-tab')">🏆 Rewards & Badges</button>
             <button class="tab-btn" onclick="switchTab('videos-tab')">🎬 Training Videos</button>
         </div>
 
@@ -217,6 +219,11 @@
         <!-- Analytics Tab -->
         <div id="analytics-tab" class="tab-pane">
             <div id="analyticsContainer"></div>
+        </div>
+
+        <!-- Rewards Tab -->
+        <div id="rewards-tab" class="tab-pane">
+            <div id="rewardsContainer"></div>
         </div>
 
         <!-- Videos Tab -->
@@ -233,6 +240,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
     <script src="js/app.js"></script>
     <script src="js/analytics.js"></script>
+    <script src="js/rewards.js"></script>
     <script>
         const playerCode = Auth.getCurrentPlayerCode();
         if (!playerCode) {
@@ -250,7 +258,7 @@
                 return;
             }
 
-            currentPlayer = player;
+            currentPlayer = Rewards.initializePlayerRewards(player);
 
             document.getElementById('playerName').textContent = `${player.firstName} ${player.lastName}`;
             document.getElementById('playerDetails').textContent = `${player.position} | Jersey #${player.jerseyNumber}`;
@@ -271,6 +279,17 @@
             
             const avgLevel = totalMetrics > 0 ? (totalLevel / totalMetrics).toFixed(1) : 0;
             document.getElementById('overallPerformance').textContent = `${avgLevel}/10`;
+
+            // Add points card to profile info
+            const pointsCard = document.createElement('div');
+            pointsCard.className = 'info-card';
+            pointsCard.style.background = 'linear-gradient(135deg, #ffd700, #ffa500)';
+            pointsCard.style.color = 'white';
+            pointsCard.innerHTML = `
+                <div class="info-label" style="color: rgba(255,255,255,0.9);">Total Points</div>
+                <div class="info-value" style="color: white;">${currentPlayer.rewards.totalPoints} 🌟</div>
+            `;
+            document.getElementById('profileInfo').appendChild(pointsCard);
 
             loadAISummary(player);
             loadMetrics(player);
@@ -360,7 +379,6 @@
                 const videoCard = document.createElement('div');
                 videoCard.className = 'video-card';
                 
-                // Use the convertToEmbedUrl function
                 const embedUrl = UI.convertToEmbedUrl(video.url);
                 
                 videoCard.innerHTML = `
@@ -379,13 +397,87 @@
             });
         }
 
+        function loadRewards(player) {
+            const rewardsContainer = document.getElementById('rewardsContainer');
+            const summary = Rewards.getRewardsSummary(player);
+
+            rewardsContainer.innerHTML = `
+                <!-- Points Banner -->
+                <div class="points-banner">
+                    <div class="points-value">${summary.totalPoints}</div>
+                    <div class="points-label">Total Points Earned</div>
+                    <div class="points-stats">
+                        <div class="points-stat">
+                            <div class="points-stat-value">${summary.badgeCount}</div>
+                            <div class="points-stat-label">Badges</div>
+                        </div>
+                        <div class="points-stat">
+                            <div class="points-stat-value">${summary.videosWatched}</div>
+                            <div class="points-stat-label">Videos</div>
+                        </div>
+                        <div class="points-stat">
+                            <div class="points-stat-value">${summary.attendanceCount}</div>
+                            <div class="points-stat-label">Sessions</div>
+                        </div>
+                        <div class="points-stat">
+                            <div class="points-stat-value">${summary.currentStreak}</div>
+                            <div class="points-stat-label">Streak</div>
+                        </div>
+                    </div>
+                </div>
+
+                ${summary.nextMilestone ? `
+                    <div class="milestone-card">
+                        <div class="milestone-header">
+                            <span class="milestone-icon">${summary.nextMilestone.icon}</span>
+                            <div class="milestone-info">
+                                <div class="milestone-title">Next Goal: ${summary.nextMilestone.name}</div>
+                                <div class="milestone-description">${summary.nextMilestone.description}</div>
+                            </div>
+                        </div>
+                        <div class="milestone-progress">
+                            <div class="milestone-progress-bar">
+                                <div class="milestone-progress-fill" style="width: ${summary.nextMilestone.progress}%;"></div>
+                            </div>
+                            <div class="milestone-progress-text">${summary.nextMilestone.progress.toFixed(0)}% Complete</div>
+                        </div>
+                    </div>
+                ` : ''}
+
+                <!-- Badges Section -->
+                <div class="metric-section">
+                    <h3 style="margin-bottom: var(--space-lg);">🏆 Your Badges</h3>
+                    <div class="badges-container" id="badgesContainer"></div>
+                </div>
+            `;
+
+            // Render badges
+            const badgesContainer = document.getElementById('badgesContainer');
+            Object.values(Rewards.BADGES).forEach(badge => {
+                const earned = player.rewards.earnedBadges.find(b => b.id === badge.id);
+                const progress = Rewards.getBadgeProgress(player, badge);
+                
+                const badgeCard = document.createElement('div');
+                badgeCard.className = `badge-card ${earned ? 'earned' : 'locked'}`;
+                badgeCard.innerHTML = `
+                    <div class="badge-icon">${badge.icon}</div>
+                    <div class="badge-name">${badge.name}</div>
+                    <div class="badge-description">${badge.description}</div>
+                    ${earned ? `<div class="badge-earned-date">✓ Earned ${UI.formatDate(earned.earnedAt)}</div>` : ''}
+                    ${!earned && progress > 0 ? `
+                        <div class="badge-progress-bar">
+                            <div class="badge-progress-fill" style="width: ${progress}%;"></div>
+                        </div>
+                    ` : ''}
+                `;
+                badgesContainer.appendChild(badgeCard);
+            });
+        }
+
         function loadAnalytics(player) {
             const analyticsContainer = document.getElementById('analyticsContainer');
-            
-            // Always regenerate analytics data to ensure latest changes are reflected
             const analyticsData = Analytics.generateAnalyticsData(player);
 
-            // Clear existing charts
             analyticsCharts.forEach(chart => Analytics.destroyChart(chart));
             analyticsCharts = [];
 
@@ -405,8 +497,6 @@
                     <div class="analytics-header">
                         <h2 class="analytics-title">📈 Performance Analytics</h2>
                     </div>
-
-                    <!-- Stats Cards -->
                     <div class="analytics-stats">
                         <div class="stat-card">
                             <div class="stat-value">${analyticsData.stats.avgRating}</div>
@@ -425,10 +515,7 @@
                             <div class="stat-label">Improvement Rate</div>
                         </div>
                     </div>
-
-                    <!-- Charts Grid -->
                     <div class="chart-grid">
-                        <!-- Timeline Chart -->
                         <div class="chart-card chart-full-width">
                             <div class="chart-card-header">
                                 <h3 class="chart-title">Performance Trends Over Time</h3>
@@ -438,8 +525,6 @@
                                 <canvas id="timelineChart" class="chart-canvas"></canvas>
                             </div>
                         </div>
-
-                        <!-- Radar Chart -->
                         <div class="chart-card">
                             <div class="chart-card-header">
                                 <h3 class="chart-title">Category Breakdown</h3>
@@ -449,8 +534,6 @@
                                 <canvas id="radarChart" class="chart-canvas"></canvas>
                             </div>
                         </div>
-
-                        <!-- Distribution Chart -->
                         <div class="chart-card">
                             <div class="chart-card-header">
                                 <h3 class="chart-title">Rating Distribution</h3>
@@ -461,8 +544,6 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- Progress List -->
                     <div class="metric-section">
                         <h3 style="margin-bottom: var(--space-lg);">📌 Biggest Changes</h3>
                         <div class="progress-list" id="progressList"></div>
@@ -470,13 +551,11 @@
                 </div>
             `;
 
-            // Create charts
             setTimeout(() => {
                 analyticsCharts.push(Analytics.createTimelineChart('timelineChart', player));
                 analyticsCharts.push(Analytics.createRadarChart('radarChart', analyticsData.categoryAverages));
                 analyticsCharts.push(Analytics.createDistributionChart('distributionChart', analyticsData.ratingDistribution));
 
-                // Render progress list
                 const progressList = document.getElementById('progressList');
                 analyticsData.trends.slice(0, 10).forEach(trend => {
                     const trendClass = trend.trend;
@@ -487,9 +566,7 @@
                         <div class="progress-item ${trendClass}">
                             <div class="progress-header">
                                 <span class="progress-name">${trend.label}</span>
-                                <span class="progress-trend ${trendColor}">
-                                    ${trendIcon} ${Math.abs(trend.change).toFixed(1)}
-                                </span>
+                                <span class="progress-trend ${trendColor}">${trendIcon} ${Math.abs(trend.change).toFixed(1)}</span>
                             </div>
                             <div class="progress-bar-container">
                                 <div class="progress-bar" style="width: ${(trend.lastRating / 10) * 100}%;"></div>
@@ -511,9 +588,10 @@
             document.getElementById(tabName).classList.add('active');
             event.target.classList.add('active');
 
-            // Reload analytics when switching to analytics tab to ensure fresh data
             if (tabName === 'analytics-tab' && currentPlayer) {
                 loadAnalytics(currentPlayer);
+            } else if (tabName === 'rewards-tab' && currentPlayer) {
+                loadRewards(currentPlayer);
             }
         }
 
@@ -522,7 +600,6 @@
             window.location.href = 'player-access.html';
         }
 
-        // Load initial data on page load
         loadPlayerProfile();
     </script>
 </body>
