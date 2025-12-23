@@ -107,6 +107,7 @@
             gap: var(--space-md);
             margin-bottom: var(--space-lg);
             border-bottom: 2px solid var(--gray-200);
+            flex-wrap: wrap;
         }
         
         .tab-btn {
@@ -240,6 +241,7 @@
 
         let currentPlayer = null;
         let analyticsCharts = [];
+        let refreshInterval = null;
 
         async function loadPlayerProfile() {
             const player = await DataManager.getPlayerByCode(playerCode);
@@ -268,7 +270,7 @@
                 });
             });
             
-            const avgLevel = totalMetrics > 0 ? Math.round(totalLevel / totalMetrics) : 0;
+            const avgLevel = totalMetrics > 0 ? (totalLevel / totalMetrics).toFixed(1) : 0;
             document.getElementById('overallPerformance').textContent = `${avgLevel}/10`;
 
             loadAISummary(player);
@@ -380,6 +382,8 @@
 
         function loadAnalytics(player) {
             const analyticsContainer = document.getElementById('analyticsContainer');
+            
+            // FIXED: Always regenerate analytics data to ensure latest changes are reflected
             const analyticsData = Analytics.generateAnalyticsData(player);
 
             // Clear existing charts
@@ -508,7 +512,7 @@
             document.getElementById(tabName).classList.add('active');
             event.target.classList.add('active');
 
-            // Load analytics when tab is activated
+            // FIXED: Reload analytics every time tab is switched to ensure fresh data
             if (tabName === 'analytics-tab' && currentPlayer) {
                 loadAnalytics(currentPlayer);
             }
@@ -519,7 +523,31 @@
             window.location.href = 'player-access.html';
         }
 
+        // FIXED: Auto-refresh player data every 30 seconds to catch coach updates
+        async function startAutoRefresh() {
+            refreshInterval = setInterval(async () => {
+                const updatedPlayer = await DataManager.getPlayerByCode(playerCode);
+                if (updatedPlayer) {
+                    currentPlayer = updatedPlayer;
+                    loadPlayerProfile();
+                    
+                    // If analytics tab is active, refresh it
+                    const analyticsTab = document.getElementById('analytics-tab');
+                    if (analyticsTab.classList.contains('active')) {
+                        loadAnalytics(currentPlayer);
+                    }
+                }
+            }, 30000); // 30 seconds
+        }
+
+        // Load initial data
         loadPlayerProfile();
+        startAutoRefresh();
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (refreshInterval) clearInterval(refreshInterval);
+        });
     </script>
 </body>
 </html>
