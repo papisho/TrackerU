@@ -84,6 +84,35 @@
   <script src="js/app.js"></script>
 
   <script>
+    
+    // Handle forgot password
+document.getElementById('forgotPasswordLink').addEventListener('click', async (e) => {
+  e.preventDefault();
+  
+  const email = document.getElementById('email').value.trim();
+  const errorAlert = document.getElementById('errorAlert');
+
+  errorAlert.style.display = 'none';
+
+  if (!email) {
+    errorAlert.textContent = 'Please enter your email address first';
+    errorAlert.style.display = 'block';
+    return;
+  }
+
+  try {
+    const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password.html`,
+    });
+
+    if (error) throw error;
+
+    alert('Password reset email sent! Check your inbox.');
+  } catch (err) {
+    errorAlert.textContent = err.message || 'Failed to send reset email';
+    errorAlert.style.display = 'block';
+  }
+});
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
 
