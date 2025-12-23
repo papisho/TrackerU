@@ -137,7 +137,7 @@
 
 .stat-card {
   background: linear-gradient(135deg, var(--primary), #0f172a);
-  color: white;
+  color: #1b201b;
   padding: var(--space-lg);
   border-radius: var(--radius-lg);
   text-align: center;
