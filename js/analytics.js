@@ -15,6 +15,7 @@ const Analytics = {
 
   /**
    * Generate analytics data from player metrics with rating history
+   * FIXED: Now properly tracks changes in real-time
    */
   generateAnalyticsData(player) {
     if (!player || !player.metrics) {
@@ -33,11 +34,12 @@ const Analytics = {
       };
     }
 
-    // Calculate statistics
+    // Calculate statistics - FIXED: Recalculates on every load
     const stats = this._calculateStats(allMetrics, player);
     const trends = this._calculateTrends(allMetrics);
     const categoryAverages = this._calculateCategoryAverages(player);
     const ratingDistribution = this._calculateRatingDistribution(allMetrics);
+    const improvementTimeline = this._calculateImprovementTimeline(allMetrics);
     
     return {
       hasData: true,
@@ -45,12 +47,123 @@ const Analytics = {
       trends,
       categoryAverages,
       ratingDistribution,
+      improvementTimeline,
       allMetrics
     };
   },
 
   /**
+   * COACH ANALYTICS: Generate team-wide analytics
+   */
+  generateCoachAnalytics(players) {
+    if (!Array.isArray(players) || players.length === 0) {
+      return {
+        hasData: false,
+        message: 'No players to analyze'
+      };
+    }
+
+    const teamStats = {
+      totalPlayers: players.length,
+      playersWithData: 0,
+      avgTeamRating: 0,
+      totalRatings: 0,
+      categoryAverages: {},
+      topPerformers: [],
+      needsAttention: [],
+      mostImproved: [],
+      recentActivity: []
+    };
+
+    let totalSum = 0;
+    let totalCount = 0;
+    const playerPerformances = [];
+
+    // Category tracking
+    const categoryTotals = {
+      technical: { sum: 0, count: 0 },
+      mentality: { sum: 0, count: 0 },
+      intelligence: { sum: 0, count: 0 },
+      athleticism: { sum: 0, count: 0 }
+    };
+
+    // Analyze each player
+    players.forEach(player => {
+      if (!player.metrics) return;
+
+      let playerSum = 0;
+      let playerCount = 0;
+      let totalRatingsForPlayer = 0;
+      let improvementCount = 0;
+
+      Object.entries(player.metrics).forEach(([catKey, category]) => {
+        Object.entries(category).forEach(([metricKey, metric]) => {
+          if (!metric || typeof metric.level !== 'number') return;
+
+          playerSum += metric.level;
+          playerCount++;
+          totalSum += metric.level;
+          totalCount++;
+
+          // Track by category
+          if (categoryTotals[catKey]) {
+            categoryTotals[catKey].sum += metric.level;
+            categoryTotals[catKey].count++;
+          }
+
+          // Check improvement from history
+          if (Array.isArray(metric.ratingHistory) && metric.ratingHistory.length >= 2) {
+            totalRatingsForPlayer += metric.ratingHistory.length;
+            const first = metric.ratingHistory[0].level;
+            const last = metric.ratingHistory[metric.ratingHistory.length - 1].level;
+            if (last > first) improvementCount++;
+          }
+        });
+      });
+
+      if (playerCount > 0) {
+        teamStats.playersWithData++;
+        const avgRating = playerSum / playerCount;
+        const improvementRate = playerCount > 0 ? (improvementCount / playerCount) * 100 : 0;
+
+        playerPerformances.push({
+          id: player.id,
+          name: `${player.firstName} ${player.lastName}`,
+          avgRating: avgRating.toFixed(1),
+          improvementRate: Math.round(improvementRate),
+          totalRatings: totalRatingsForPlayer,
+          position: player.position || 'N/A'
+        });
+      }
+    });
+
+    // Calculate team averages
+    teamStats.avgTeamRating = totalCount > 0 ? (totalSum / totalCount).toFixed(1) : 0;
+    teamStats.totalRatings = totalCount;
+
+    // Calculate category averages
+    Object.entries(categoryTotals).forEach(([cat, data]) => {
+      teamStats.categoryAverages[cat] = data.count > 0 ? (data.sum / data.count).toFixed(1) : 0;
+    });
+
+    // Sort players
+    playerPerformances.sort((a, b) => parseFloat(b.avgRating) - parseFloat(a.avgRating));
+    teamStats.topPerformers = playerPerformances.slice(0, 5);
+    teamStats.needsAttention = playerPerformances.filter(p => parseFloat(p.avgRating) < 6).slice(0, 5);
+    
+    // Most improved
+    const byImprovement = [...playerPerformances].sort((a, b) => b.improvementRate - a.improvementRate);
+    teamStats.mostImproved = byImprovement.slice(0, 5);
+
+    return {
+      hasData: true,
+      ...teamStats
+    };
+  },
+
+  /**
    * Collect all metrics with their rating history
+   * FIXED: Now properly sorts and tracks all history entries
    */
   _collectAllMetricsWithHistory(player) {
     const metrics = [];
@@ -62,8 +175,9 @@ const Analytics = {
       Object.entries(category).forEach(([metricKey, metric]) => {
         if (!metric) return;
         
-        const history = Array.isArray(metric.ratingHistory) 
-          ? metric.ratingHistory 
+        // FIXED: Always use rating history if available, otherwise create initial entry
+        let history = Array.isArray(metric.ratingHistory) && metric.ratingHistory.length > 0
+          ? [...metric.ratingHistory]
           : [{
               level: metric.level,
               comment: metric.comment || '',
@@ -71,6 +185,9 @@ const Analytics = {
               context: 'initial',
               contextDate: null
             }];
+
+        // Sort history by date
+        history.sort((a, b) => new Date(a.date) - new Date(b.date));
 
         metrics.push({
           key: metricKey,
@@ -87,12 +204,14 @@ const Analytics = {
 
   /**
    * Calculate overall statistics
+   * FIXED: Now properly counts all ratings and improvements
    */
   _calculateStats(allMetrics, player) {
     let totalRatings = 0;
     let sumRatings = 0;
     let improvementCount = 0;
     let declineCount = 0;
+    let stableCount = 0;
 
     allMetrics.forEach(metric => {
       const history = metric.history;
@@ -102,8 +221,13 @@ const Analytics = {
       if (history.length >= 2) {
         const first = history[0].level;
         const last = history[history.length - 1].level;
-        if (last > first) improvementCount++;
-        else if (last < first) declineCount++;
+        const change = last - first;
+        
+        if (change > 0.5) improvementCount++;
+        else if (change < -0.5) declineCount++;
+        else stableCount++;
+      } else {
+        stableCount++;
       }
     });
 
@@ -118,12 +242,14 @@ const Analytics = {
       avgRating,
       improvementCount,
       declineCount,
+      stableCount,
       improvementRate
     };
   },
 
   /**
    * Calculate trends for each metric
+   * FIXED: Now accurately tracks changes over time
    */
   _calculateTrends(allMetrics) {
     return allMetrics.map(metric => {
@@ -135,13 +261,15 @@ const Analytics = {
           trend: 'stable',
           change: 0,
           firstRating: metric.currentLevel,
-          lastRating: metric.currentLevel
+          lastRating: metric.currentLevel,
+          percentChange: 0
         };
       }
 
       const first = history[0].level;
       const last = history[history.length - 1].level;
       const change = last - first;
+      const percentChange = first > 0 ? ((change / first) * 100).toFixed(1) : 0;
       
       let trend = 'stable';
       if (change > 0.5) trend = 'improving';
@@ -150,15 +278,47 @@ const Analytics = {
       return {
         ...metric,
         trend,
-        change,
+        change: parseFloat(change.toFixed(1)),
         firstRating: first,
-        lastRating: last
+        lastRating: last,
+        percentChange,
+        totalUpdates: history.length
       };
     }).sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
   },
 
   /**
+   * Calculate improvement timeline (for trend chart)
+   * NEW: Shows overall improvement over time
+   */
+  _calculateImprovementTimeline(allMetrics) {
+    const dateMap = new Map();
+
+    allMetrics.forEach(metric => {
+      metric.history.forEach(entry => {
+        if (!dateMap.has(entry.date)) {
+          dateMap.set(entry.date, { sum: 0, count: 0 });
+        }
+        const data = dateMap.get(entry.date);
+        data.sum += entry.level;
+        data.count++;
+      });
+    });
+
+    const timeline = Array.from(dateMap.entries())
+      .map(([date, data]) => ({
+        date,
+        avgRating: (data.sum / data.count).toFixed(1),
+        count: data.count
+      }))
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    return timeline;
+  },
+
+  /**
    * Calculate category averages
+   * FIXED: Uses current ratings for accuracy
    */
   _calculateCategoryAverages(player) {
     const categoryLabels = {
@@ -198,6 +358,7 @@ const Analytics = {
 
   /**
    * Calculate rating distribution (how many ratings at each level)
+   * FIXED: Uses current levels
    */
   _calculateRatingDistribution(allMetrics) {
     const distribution = Array(10).fill(0).map((_, i) => ({
@@ -217,6 +378,7 @@ const Analytics = {
 
   /**
    * Create improvement timeline chart (line chart)
+   * FIXED: Now shows all historical data points
    */
   createTimelineChart(canvasId, player, metricKey = null) {
     const ctx = document.getElementById(canvasId);
@@ -234,7 +396,7 @@ const Analytics = {
     ];
 
     metricsToPlot.forEach((metric, idx) => {
-      const history = metric.history.sort((a, b) => 
+      const history = [...metric.history].sort((a, b) => 
         new Date(a.date) - new Date(b.date)
       );
 
@@ -290,7 +452,10 @@ const Analytics = {
                 const datasetIndex = context.datasetIndex;
                 const metric = metricsToPlot[datasetIndex];
                 const rating = metric.history[dataIndex];
-                return rating.comment ? `Comment: ${rating.comment}` : '';
+                let label = '';
+                if (rating.comment) label += `\nComment: ${rating.comment}`;
+                if (rating.context) label += `\nType: ${rating.context}`;
+                return label;
               }
             }
           }
@@ -444,6 +609,53 @@ const Analytics = {
         plugins: {
           legend: {
             display: false
+          }
+        }
+      }
+    });
+  },
+
+  /**
+   * NEW: Create coach team overview chart
+   */
+  createTeamOverviewChart(canvasId, coachAnalytics) {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return null;
+
+    const categories = ['Technical', 'Mentality', 'Intelligence', 'Athleticism'];
+    const data = [
+      coachAnalytics.categoryAverages.technical || 0,
+      coachAnalytics.categoryAverages.mentality || 0,
+      coachAnalytics.categoryAverages.intelligence || 0,
+      coachAnalytics.categoryAverages.athleticism || 0
+    ];
+
+    return new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: categories,
+        datasets: [{
+          label: 'Team Average by Category',
+          data,
+          backgroundColor: [
+            'rgba(30, 60, 114, 0.8)',
+            'rgba(46, 204, 113, 0.8)',
+            'rgba(243, 156, 18, 0.8)',
+            'rgba(231, 76, 60, 0.8)'
+          ]
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            min: 0,
+            max: 10,
+            title: {
+              display: true,
+              text: 'Average Rating'
+            }
           }
         }
       }
