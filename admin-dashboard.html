@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Dashboard - TrackerU</title>
-  <link rel="stylesheet" href="css/styles.css">
-  <link rel="stylesheet" href="css/analytics.css">
-  <link rel="stylesheet" href="css/rewards.css">
-  <style>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - TrackerU</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/analytics.css">
+    <link rel="stylesheet" href="css/rewards.css">
+    <style>
     .dashboard-header {
       background: linear-gradient(135deg, var(--primary), #0f172a);
       color: white;
@@ -132,198 +132,222 @@
       .context-grid { grid-template-columns: 1fr; }
     }
   </style>
-</head>
-<body>
-  <!-- Navigation -->
-  <nav class="navbar">
-    <div class="navbar-container">
-      <div class="navbar-brand">
-        <div class="navbar-brand-icon">⚽</div>
-        <span>TrackerU</span>
+  </head>
+  <body>
+    <!-- Navigation -->
+    <nav class="navbar">
+      <div class="navbar-container">
+        <div class="navbar-brand">
+          <div class="navbar-brand-icon">⚽</div>
+          <span>TrackerU</span>
+        </div>
+        <ul class="navbar-menu">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="admin-dashboard.html" class="active">Dashboard</a></li>
+          <li><a href="rewards-leaderboard.html">Leaderboard</a></li>
+          <li><a href="#" id="logoutLink"
+              style="cursor: pointer;">Logout</a></li>
+        </ul>
       </div>
-      <ul class="navbar-menu">
-        <li><a href="index.html">Home</a></li>
-        <li><a href="admin-dashboard.html" class="active">Dashboard</a></li>
-        <li><a href="rewards-leaderboard.html">Leaderboard</a></li>
-        <li><a href="#" id="logoutLink" style="cursor: pointer;">Logout</a></li>
-      </ul>
-    </div>
-  </nav>
+    </nav>
 
-  <!-- Dashboard Header -->
-  <div class="dashboard-header">
+    <!-- Dashboard Header -->
+    <div class="dashboard-header">
+      <div class="container">
+        <h1>👋 Welcome Coach!</h1>
+        <p>Manage your players, metrics, attendance, and rewards</p>
+      </div>
+    </div>
+
     <div class="container">
-      <h1>👋 Welcome Coach!</h1>
-      <p>Manage your players, metrics, attendance, and rewards</p>
-    </div>
-  </div>
-
-  <div class="container">
-    <!-- Stats Section -->
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-number" id="totalPlayers">0</div>
-        <div class="stat-label">Total Players</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-number" id="avgPerformance">0</div>
-        <div class="stat-label">Avg Performance Level</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-number" id="totalVideos">0</div>
-        <div class="stat-label">Videos Assigned</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-number" id="improvingPlayers">0</div>
-        <div class="stat-label">Players Improving</div>
-      </div>
-      <div class="stat-card" style="background: linear-gradient(135deg, #ffd700, #ffa500); color: white;">
-        <div class="stat-number" style="color: white;" id="totalPoints">0</div>
-        <div class="stat-label" style="color: rgba(255,255,255,0.9);">Team Points</div>
-      </div>
-    </div>
-
-    <!-- Tab Navigation -->
-    <div class="sidebar-tabs">
-      <button class="tab-btn active" data-tab="players-tab">👥 Players</button>
-      <button class="tab-btn" data-tab="attendance-tab">✅ Attendance</button>
-      <button class="tab-btn" data-tab="rewards-tab">🎯 Rewards Settings</button>
-      <button class="tab-btn" data-tab="team-analytics-tab">📊 Team Analytics</button>
-      <button class="tab-btn" data-tab="add-player-tab">➕ Add Player</button>
-    </div>
-
-    <!-- Players Tab -->
-    <div id="players-tab" class="tab-content active">
-      <h2 style="margin-bottom: var(--space-lg);">Player Management</h2>
-      <div id="playersList"></div>
-    </div>
-
-    <!-- Attendance Tab -->
-    <div id="attendance-tab" class="tab-content">
-      <div class="attendance-calendar">
-        <div class="attendance-header">
-          <h2>✅ Take Attendance</h2>
-          <div class="attendance-controls">
-            <input type="date" id="attendanceDate" class="form-input" style="width: auto;">
-            <select id="sessionType" class="form-select" style="width: auto;">
-              <option value="training">Training Session</option>
-              <option value="game">Game/Match</option>
-              <option value="scrimmage">Scrimmage</option>
-              <option value="conditioning">Conditioning</option>
-            </select>
-            <button class="btn btn-success" onclick="saveAttendance()">💾 Save Attendance</button>
-          </div>
+      <!-- Stats Section -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-number" id="totalPlayers">0</div>
+          <div class="stat-label">Total Players</div>
         </div>
-        <div class="attendance-grid" id="attendanceGrid"></div>
-      </div>
-
-      <!-- Attendance History -->
-      <div class="metric-section" style="margin-top: var(--space-xl);">
-        <h3 style="margin-bottom: var(--space-lg);">📅 Recent Sessions</h3>
-        <div id="attendanceHistory"></div>
-      </div>
-    </div>
-
-    <!-- Rewards Settings Tab -->
-    <div id="rewards-tab" class="tab-content">
-      <div class="rewards-settings">
-        <h2 style="margin-bottom: var(--space-lg);">🎯 Rewards System Settings</h2>
-        
-        <!-- Toggle Rewards -->
-        <div class="rewards-toggle">
-          <div>
-            <h4 style="margin-bottom: var(--space-xs);">Enable Physical Rewards</h4>
-            <p style="color: var(--gray-600); font-size: var(--font-size-sm); margin: 0;">Turn off if you can't afford physical rewards. Badges will always be visible.</p>
-          </div>
-          <div class="toggle-switch" id="rewardsToggle" onclick="toggleRewards()">
-          </div>
+        <div class="stat-card">
+          <div class="stat-number" id="avgPerformance">0</div>
+          <div class="stat-label">Avg Performance Level</div>
         </div>
-
-        <!-- Custom Rewards List -->
-        <div style="margin-top: var(--space-xl);">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-lg);">
-            <h3>Custom Rewards</h3>
-            <button class="btn btn-primary" onclick="addCustomReward()">+ Add Reward</button>
-          </div>
-          <div class="custom-rewards-list" id="customRewardsList"></div>
+        <div class="stat-card">
+          <div class="stat-number" id="totalVideos">0</div>
+          <div class="stat-label">Videos Assigned</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="improvingPlayers">0</div>
+          <div class="stat-label">Players Improving</div>
+        </div>
+        <div class="stat-card"
+          style="background: linear-gradient(135deg, #ffd700, #ffa500); color: white;">
+          <div class="stat-number" style="color: white;"
+            id="totalPoints">0</div>
+          <div class="stat-label" style="color: rgba(255,255,255,0.9);">Team
+            Points</div>
         </div>
       </div>
-    </div>
 
-    <!-- Team Analytics Tab -->
-    <div id="team-analytics-tab" class="tab-content">
-      <h2 style="margin-bottom: var(--space-lg);">📊 Team Analytics & Insights</h2>
-      
-      <!-- Player Selector -->
-      <div class="player-selector">
-        <label for="playerAnalyticsSelect">🔍 View Detailed Player Analytics</label>
-        <select id="playerAnalyticsSelect" onchange="loadPlayerAnalytics(this.value)">
-          <option value="">-- Select a player --</option>
-        </select>
+      <!-- Tab Navigation -->
+      <div class="sidebar-tabs">
+        <button class="tab-btn active" data-tab="players-tab">👥
+          Players</button>
+        <button class="tab-btn" data-tab="attendance-tab">✅ Attendance</button>
+        <button class="tab-btn" data-tab="rewards-tab">🎯 Rewards
+          Settings</button>
+        <button class="tab-btn" data-tab="team-analytics-tab">📊 Team
+          Analytics</button>
+        <button class="tab-btn" data-tab="add-player-tab">➕ Add Player</button>
       </div>
 
-      <!-- Player Analytics Container -->
-      <div id="playerAnalyticsContainer" style="display: none;"></div>
+      <!-- Players Tab -->
+      <div id="players-tab" class="tab-content active">
+        <h2 style="margin-bottom: var(--space-lg);">Player Management</h2>
+        <div id="playersList"></div>
+      </div>
 
-      <!-- Team Analytics Container -->
-      <div id="teamAnalyticsContainer"></div>
-    </div>
-
-    <!-- Add Player Tab -->
-    <div id="add-player-tab" class="tab-content">
-      <div class="card">
-        <div class="card-header">
-          <h2 class="card-title">Add New Player</h2>
-        </div>
-        <form id="addPlayerForm">
-          <div class="grid grid-2">
-            <div class="form-group">
-              <label class="form-label">First Name</label>
-              <input type="text" class="form-input" id="firstName" required>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Last Name</label>
-              <input type="text" class="form-input" id="lastName" required>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Position</label>
-              <input type="text" class="form-input" id="position" placeholder="e.g., Forward, Midfielder">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Jersey Number</label>
-              <input type="number" class="form-input" id="jerseyNumber" min="1" max="99">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Date of Birth</label>
-              <input type="date" class="form-input" id="dateOfBirth">
+      <!-- Attendance Tab -->
+      <div id="attendance-tab" class="tab-content">
+        <div class="attendance-calendar">
+          <div class="attendance-header">
+            <h2>✅ Take Attendance</h2>
+            <div class="attendance-controls">
+              <input type="date" id="attendanceDate" class="form-input"
+                style="width: auto;">
+              <select id="sessionType" class="form-select" style="width: auto;">
+                <option value="training">Training Session</option>
+                <option value="game">Game/Match</option>
+                <option value="scrimmage">Scrimmage</option>
+                <option value="conditioning">Conditioning</option>
+              </select>
+              <button class="btn btn-success" onclick="saveAttendance()">💾 Save
+                Attendance</button>
             </div>
           </div>
-          <button type="submit" class="btn btn-primary">Add Player</button>
-        </form>
+          <div class="attendance-grid" id="attendanceGrid"></div>
+        </div>
+
+        <!-- Attendance History -->
+        <div class="metric-section" style="margin-top: var(--space-xl);">
+          <h3 style="margin-bottom: var(--space-lg);">📅 Recent Sessions</h3>
+          <div id="attendanceHistory"></div>
+        </div>
+      </div>
+
+      <!-- Rewards Settings Tab -->
+      <div id="rewards-tab" class="tab-content">
+        <div class="rewards-settings">
+          <h2 style="margin-bottom: var(--space-lg);">🎯 Rewards System
+            Settings</h2>
+
+          <!-- Toggle Rewards -->
+          <div class="rewards-toggle">
+            <div>
+              <h4 style="margin-bottom: var(--space-xs);">Enable Physical
+                Rewards</h4>
+              <p
+                style="color: var(--gray-600); font-size: var(--font-size-sm); margin: 0;">Turn
+                off if you can't afford physical rewards. Badges will always be
+                visible.</p>
+            </div>
+            <div class="toggle-switch" id="rewardsToggle"
+              onclick="toggleRewards()">
+            </div>
+          </div>
+
+          <!-- Custom Rewards List -->
+          <div style="margin-top: var(--space-xl);">
+            <div
+              style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-lg);">
+              <h3>Custom Rewards</h3>
+              <button class="btn btn-primary" onclick="addCustomReward()">+ Add
+                Reward</button>
+            </div>
+            <div class="custom-rewards-list" id="customRewardsList"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Team Analytics Tab -->
+      <div id="team-analytics-tab" class="tab-content">
+        <h2 style="margin-bottom: var(--space-lg);">📊 Team Analytics &
+          Insights</h2>
+
+        <!-- Player Selector -->
+        <div class="player-selector">
+          <label for="playerAnalyticsSelect">🔍 View Detailed Player
+            Analytics</label>
+          <select id="playerAnalyticsSelect"
+            onchange="loadPlayerAnalytics(this.value)">
+            <option value>-- Select a player --</option>
+          </select>
+        </div>
+
+        <!-- Player Analytics Container -->
+        <div id="playerAnalyticsContainer" style="display: none;"></div>
+
+        <!-- Team Analytics Container -->
+        <div id="teamAnalyticsContainer"></div>
+      </div>
+
+      <!-- Add Player Tab -->
+      <div id="add-player-tab" class="tab-content">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Add New Player</h2>
+          </div>
+          <form id="addPlayerForm">
+            <div class="grid grid-2">
+              <div class="form-group">
+                <label class="form-label">First Name</label>
+                <input type="text" class="form-input" id="firstName" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Last Name</label>
+                <input type="text" class="form-input" id="lastName" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Position</label>
+                <input type="text" class="form-input" id="position"
+                  placeholder="e.g., Forward, Midfielder">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Jersey Number</label>
+                <input type="number" class="form-input" id="jerseyNumber"
+                  min="1" max="99">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Date of Birth</label>
+                <input type="date" class="form-input" id="dateOfBirth">
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Add Player</button>
+          </form>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- Player Details Modal -->
-  <div id="playerModal" class="modal">
-    <div class="modal-content" style="max-width: 900px; max-height: 95vh;">
-      <div class="modal-header">
-        <h2 id="modalPlayerName"></h2>
-        <button class="modal-close" onclick="UI.closeModal('playerModal')">&times;</button>
+    <!-- Player Details Modal -->
+    <div id="playerModal" class="modal">
+      <div class="modal-content" style="max-width: 900px; max-height: 95vh;">
+        <div class="modal-header">
+          <h2 id="modalPlayerName"></h2>
+          <button class="modal-close"
+            onclick="UI.closeModal('playerModal')">&times;</button>
+        </div>
+        <div id="playerDetails"></div>
       </div>
-      <div id="playerDetails"></div>
     </div>
-  </div>
 
-  <!-- Supabase JS MUST load before app.js -->
-  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
-  <script src="js/app.js"></script>
-  <script src="js/analytics.js"></script>
-  <script src="js/rewards.js"></script>
+    <!-- Supabase JS MUST load before app.js -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
+    <script src="js/app.js"></script>
+    <script src="js/analytics.js"></script>
+    <script src="js/rewards.js"></script>
 
-  <script>
+    <script>
     const METRIC_CONFIG = {
       technical: {
         label: '⚡ Technical Skills',
@@ -1379,5 +1403,5 @@
       });
     });
   </script>
-</body>
+  </body>
 </html>

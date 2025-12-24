@@ -2,6 +2,7 @@
 // Handles points, badges, attendance tracking, and coach-controlled rewards
 
 const Rewards = {
+
   // Points configuration
   POINTS: {
     VIDEO_WATCHED: 10,        // Points for watching a full video
@@ -14,6 +15,8 @@ const Rewards = {
     PERFECT_CATEGORY: 50,      // All metrics in a category at 8+
     ELITE_METRIC: 25          // Single metric reaches 9+
   },
+
+
 
   // Badge definitions
   BADGES: {
@@ -363,6 +366,29 @@ const Rewards = {
 
     return player;
   },
+
+  // Check performance improvement after a rating update
+  checkPerformanceImprovement(player) {
+    // Ensure rewards structure exists
+    player = this.initializePlayerRewards(player);
+
+    // 1) Calculate overall improvement rate
+    const improvementRate = this.calculateImprovementRate(player);
+
+    // 2) Award performance points based on that rate
+    player = this.awardPerformancePoints(player, improvementRate);
+
+    // 3) Re-check badges with the new points/metrics
+    const { newBadges } = this.checkAndAwardBadges(player);
+
+    // Optional: log for debugging
+    console.log(
+      `Checked performance improvement for ${player.firstName} ${player.lastName}: ` +
+      `${improvementRate.toFixed(1)}% improvement, ${newBadges.length} new badges.`,
+    );
+
+    return player;
+  }, 
 
   // Check and award badges
   checkAndAwardBadges(player) {
