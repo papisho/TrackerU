@@ -324,33 +324,51 @@ const Rewards = {
 
   // Update attendance streak
   updateStreak(player) {
-    const sortedAttendance = player.rewards.attendanceHistory
-      .filter(a => a.status === 'present')
-      .sort((a, b) => new Date(b.date) - new Date(a.date));
+  player = this.initializePlayerRewards(player);
 
-    if (sortedAttendance.length === 0) {
-      player.rewards.currentStreak = 0;
-      return player;
-    }
+  const history = Array.isArray(player.rewards.attendanceHistory)
+    ? [...player.rewards.attendanceHistory]
+    : [];
 
-    let streak = 1;
-    for (let i = 0; i < sortedAttendance.length - 1; i++) {
-      const current = new Date(sortedAttendance[i].date);
-      const previous = new Date(sortedAttendance[i + 1].date);
-      const diffDays = Math.floor((current - previous) / (1000 * 60 * 60 * 24));
-
-      if (diffDays <= 3) { // Allow 3-day gap (for weekend/rest days)
-        streak++;
-      } else {
-        break;
-      }
-    }
-
-    player.rewards.currentStreak = streak;
-    player.rewards.longestStreak = Math.max(player.rewards.longestStreak || 0, streak);
-
+  if (history.length === 0) {
+    player.rewards.currentStreak = 0;
     return player;
-  },
+  }
+
+  // Sort newest -> oldest
+  history.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  // If latest record is absent, streak is broken immediately
+  if (history[0].present !== true) {
+    player.rewards.currentStreak = 0;
+    return player;
+  }
+
+  // Count consecutive present records allowing up to 3-day gap
+  let streak = 1;
+  let lastPresentDate = new Date(history[0].date);
+
+  for (let i = 1; i < history.length; i++) {
+    const rec = history[i];
+
+    // Stop streak as soon as an absent record is encountered
+    if (rec.present !== true) break;
+
+    const currentDate = new Date(rec.date);
+    const diffDays = Math.floor((lastPresentDate - currentDate) / (1000 * 60 * 60 * 24));
+
+    if (diffDays <= 3) {
+      streak++;
+      lastPresentDate = currentDate;
+    } else {
+      break;
+    }
+  }
+
+  player.rewards.currentStreak = streak;
+  player.rewards.longestStreak = Math.max(player.rewards.longestStreak || 0, streak);
+  return player;
+},
 
   // Award points for performance improvements
   awardPerformancePoints(player, improvementRate) {
