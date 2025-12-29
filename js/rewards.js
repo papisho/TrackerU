@@ -13,7 +13,9 @@ const Rewards = {
     IMPROVEMENT_MEDIUM: 40,    // 10-20% improvement
     IMPROVEMENT_LARGE: 60,     // 20%+ improvement
     PERFECT_CATEGORY: 50,      // All metrics in a category at 8+
-    ELITE_METRIC: 25          // Single metric reaches 9+
+    ELITE_METRIC: 25,          // Single metric reaches 9+
+    ATTENDANCE_ABSENT_OTHER: -5 // 
+
   },
 
 
@@ -282,45 +284,62 @@ const Rewards = {
   },
 
   // Record attendance
-  recordAttendance(player, sessionDate, status = 'present') {
-    player = this.initializePlayerRewards(player);
+ recordAttendance(player, sessionDate, isPresent, sessionType = 'training', absenceReason = 'other') {
+  player = this.initializePlayerRewards(player);
 
-    // Check if already recorded for this date
-    const existingRecord = player.rewards.attendanceHistory.find(
-      a => a.date.split('T')[0] === sessionDate.split('T')[0]
-    );
+  const dateKey = String(sessionDate || '').split('T')[0];
+  if (!dateKey) return player;
 
-    if (existingRecord) {
-      console.log('Attendance already recorded for this date');
-      return player;
-    }
+  // Prevent duplicate record for same date + sessionType
+  const existingRecord = player.rewards.attendanceHistory.find(a => {
+    const aDateKey = String(a.date || '').split('T')[0];
+    const aSessionType = a.sessionType || 'training';
+    return aDateKey === dateKey && aSessionType === (sessionType || 'training');
+  });
+  if (existingRecord) return player;
 
-    // Record attendance
-    player.rewards.attendanceHistory.push({
-      date: sessionDate,
-      status,
-      recordedAt: new Date().toISOString()
+  const present = Boolean(isPresent);
+  const normalizedAbsenceReason = present ? null : (absenceReason === 'excused' ? 'excused' : 'other');
+
+  player.rewards.attendanceHistory.push({
+    date: dateKey,
+    sessionType: sessionType || 'training',
+    present,
+    absenceReason: normalizedAbsenceReason,
+    recordedAt: new Date().toISOString()
+  });
+
+  if (present) {
+    // +5
+    player = this.awardPoints(player, this.POINTS.ATTENDANCE_PRESENT, 'Attended session', {
+      date: dateKey,
+      sessionType
     });
 
-    if (status === 'present') {
-      // Award base points
-      player = this.awardPoints(player, this.POINTS.ATTENDANCE_PRESENT, 'Attended session', {
-        date: sessionDate
-      });
+    // streak updates (will remain >0 only if most recent is present)
+    player = this.updateStreak(player);
 
-      // Update streak
-      player = this.updateStreak(player);
-
-      // Check for streak bonuses
-      if (player.rewards.currentStreak === 3) {
-        player = this.awardPoints(player, this.POINTS.ATTENDANCE_STREAK_3, '3-day attendance streak!');
-      } else if (player.rewards.currentStreak === 5) {
-        player = this.awardPoints(player, this.POINTS.ATTENDANCE_STREAK_5, '5-day attendance streak!');
-      }
+    // bonuses
+    if (player.rewards.currentStreak === 3) {
+      player = this.awardPoints(player, this.POINTS.ATTENDANCE_STREAK_3, '3-day attendance streak!');
+    } else if (player.rewards.currentStreak === 5) {
+      player = this.awardPoints(player, this.POINTS.ATTENDANCE_STREAK_5, '5-day attendance streak!');
     }
+  } else {
+    // Break streak immediately
+    player = this.updateStreak(player);
 
-    return player;
-  },
+    // Excused: 0, Other: -5
+    if (normalizedAbsenceReason === 'other') {
+      player = this.awardPoints(player, this.POINTS.ATTENDANCE_ABSENT_OTHER, 'Absent (other)', {
+        date: dateKey,
+        sessionType
+      });
+    }
+  }
+
+  return player;
+},
 
   // Update attendance streak
   updateStreak(player) {

@@ -419,67 +419,109 @@
       // Initialize attendance state
       attendanceState = {};
       players.forEach(player => {
-        attendanceState[player.id] = null; // null = unmarked, true = present, false = absent
+        attendanceState[player.id] = { status: null, absenceReason: 'other' };
+
       });
 
       players.forEach(player => {
-        const card = document.createElement('div');
-        card.className = 'attendance-player-card';
-        card.id = `attendance-${player.id}`;
-        card.innerHTML = `
-          <div class="attendance-player-name">${player.firstName} ${player.lastName}</div>
-          <div class="attendance-toggle">
-            <button class="attendance-btn present" onclick="markAttendance('${player.id}', true)">Present</button>
-            <button class="attendance-btn absent" onclick="markAttendance('${player.id}', false)">Absent</button>
-          </div>
-        `;
-        grid.appendChild(card);
-      });
+  const card = document.createElement('div');
+  card.className = 'attendance-player-card';
+  card.id = `attendance-${player.id}`;
 
-      loadAttendanceHistory();
+  card.innerHTML = `
+    <div class="attendance-player-name">${player.firstName} ${player.lastName}</div>
+
+    <div class="attendance-toggle">
+      <button class="attendance-btn present" onclick="markAttendance('${player.id}', true)">Present</button>
+      <button class="attendance-btn absent" onclick="markAttendance('${player.id}', false)">Absent</button>
+    </div>
+
+    <!-- Only shown when Absent is selected -->
+    <div class="absence-reason" style="display:none;">
+      <select onchange="setAbsenceReason('${player.id}', this.value)">
+        <option value="excused">Excused</option>
+        <option value="other" selected>Other</option>
+      </select>
+    </div>
+  `;
+
+  grid.appendChild(card);
+});
     }
 
-    function markAttendance(playerId, isPresent) {
-      attendanceState[playerId] = isPresent;
-      const card = document.getElementById(`attendance-${playerId}`);
-      card.className = 'attendance-player-card ' + (isPresent ? 'present' : 'absent');
-      
-      const buttons = card.querySelectorAll('.attendance-btn');
-      buttons.forEach(btn => btn.classList.remove('active'));
-      buttons[isPresent ? 0 : 1].classList.add('active');
+loadAttendanceHistory();
+    
+
+  function markAttendance(playerId, isPresent) {
+  // Ensure object state exists
+  if (!attendanceState[playerId] || typeof attendanceState[playerId] !== 'object') {
+    attendanceState[playerId] = { status: null, absenceReason: 'other' };
+  }
+
+  attendanceState[playerId].status = isPresent;
+
+  const card = document.getElementById(`attendance-${playerId}`);
+  card.className = 'attendance-player-card ' + (isPresent ? 'present' : 'absent');
+
+  const buttons = card.querySelectorAll('.attendance-btn');
+  buttons.forEach(btn => btn.classList.remove('active'));
+  buttons[isPresent ? 0 : 1].classList.add('active');
+
+  // Show/hide absence reason dropdown
+  const reasonWrap = card.querySelector('.absence-reason');
+  if (reasonWrap) {
+    reasonWrap.style.display = isPresent ? 'none' : 'block';
+  }
+}
+
+  function setAbsenceReason(playerId, reason) {
+  if (!attendanceState[playerId] || typeof attendanceState[playerId] !== 'object') {
+    attendanceState[playerId] = { status: null, absenceReason: 'other' };
+  }
+  attendanceState[playerId].absenceReason = (reason === 'excused') ? 'excused' : 'other';
+}
+
+async function saveAttendance() {
+  const date = document.getElementById('attendanceDate').value;
+  const sessionType = document.getElementById('sessionType').value;
+
+  if (!date) {
+    UI.showAlert('Please select a date', 'danger');
+    return;
+  }
+
+  const unmarked = Object.values(attendanceState).filter(v => v?.status === null).length;
+  if (unmarked > 0) {
+    if (!confirm(`${unmarked} players are unmarked. Continue?`)) return;
+  }
+
+  try {
+    const players = DataManager.getPlayers();
+
+    for (const player of players) {
+      const st = attendanceState[player.id];
+      const isPresent = st ? st.status : null;
+
+      if (isPresent !== null) {
+        const absenceReason = st?.absenceReason || 'other';
+
+        // IMPORTANT: pass player object (not id) so rewards.attendanceHistory exists
+        const updated = Rewards.recordAttendance(player, date, isPresent, sessionType, absenceReason);
+
+        // Persist rewards (attendance + points) to Supabase
+        await DataManager.updatePlayer(player.id, { rewards: updated.rewards });
+      }
     }
 
-    async function saveAttendance() {
-      const date = document.getElementById('attendanceDate').value;
-      const sessionType = document.getElementById('sessionType').value;
+    UI.showAlert('Attendance saved successfully!', 'success');
+    await DataManager.init(true);
+    loadAttendanceTab();
+    computeStats(DataManager.getPlayers());
+  } catch (err) {
+    UI.showAlert(err.message || 'Failed to save attendance', 'danger');
+  }
+}
 
-      if (!date) {
-        UI.showAlert('Please select a date', 'danger');
-        return;
-      }
-
-      const unmarked = Object.values(attendanceState).filter(v => v === null).length;
-      if (unmarked > 0) {
-        if (!confirm(`${unmarked} players are unmarked. Continue?`)) return;
-      }
-
-      try {
-        const players = DataManager.getPlayers();
-        for (const player of players) {
-          const isPresent = attendanceState[player.id];
-          if (isPresent !== null) {
-            await Rewards.recordAttendance(player.id, date, isPresent, sessionType);
-          }
-        }
-
-        UI.showAlert('Attendance saved successfully!', 'success');
-        await DataManager.init(true);
-        loadAttendanceTab();
-        computeStats(DataManager.getPlayers());
-      } catch (err) {
-        UI.showAlert(err.message || 'Failed to save attendance', 'danger');
-      }
-    }
 
     function loadAttendanceHistory() {
       const container = document.getElementById('attendanceHistory');
