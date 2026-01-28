@@ -530,15 +530,18 @@ async function saveAttendance() {
       // Gather all attendance records
       const allRecords = [];
       players.forEach(player => {
-        // FIXED: Changed from player.rewards.attendance to player.rewards.attendanceHistory
-        if (player.rewards?.attendanceHistory) {
-          player.rewards.attendanceHistory.forEach(record => {
+        // --- FIX IS HERE ---
+        // Ensure we are looking at player.rewards.attendanceHistory
+        const rewards = player.rewards || {};
+        if (rewards.attendanceHistory && Array.isArray(rewards.attendanceHistory)) {
+          rewards.attendanceHistory.forEach(record => {
             allRecords.push({
               ...record,
               playerName: `${player.firstName} ${player.lastName}`
             });
           });
         }
+        // --- END FIX ---
       });
 
       // Sort by date (most recent first)
@@ -561,7 +564,7 @@ async function saveAttendance() {
             absent: []
           };
         }
-        // FIXED: Use record.present === true instead of checking for property existence
+        
         if (record.present === true) {
           sessions[key].present.push(record.playerName);
         } else {
