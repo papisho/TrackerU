@@ -449,8 +449,6 @@
 });
     }
 
-loadAttendanceHistory();
-    
 
   function markAttendance(playerId, isPresent) {
   // Ensure object state exists
@@ -514,8 +512,12 @@ async function saveAttendance() {
     }
 
     UI.showAlert('Attendance saved successfully!', 'success');
+    // Refresh data from Supabase
     await DataManager.init(true);
-    loadAttendanceTab();
+
+    // Refresh UI tabs
+    loadAttendanceHistory();
+    
     computeStats(DataManager.getPlayers());
   } catch (err) {
     UI.showAlert(err.message || 'Failed to save attendance', 'danger');
@@ -1412,8 +1414,12 @@ async function saveAttendance() {
         window.location.href = 'index.html';
       });
 
+      // Initalize data
       await DataManager.init(true);
       renderPlayers();
+
+      // load history only after data is initalized
+      loadAttendanceHistory();
 
       document.getElementById('playersList').addEventListener('click', (e) => {
         const btn = e.target.closest('button[data-action]');
