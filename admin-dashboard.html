@@ -735,13 +735,18 @@ async function saveAttendance() {
       if (!name) return;
       const cost = prompt('Points Cost (e.g., 500):');
       if (!cost) return;
+      
+      // NEW: Ask for secret code
+      const redemptionInfo = prompt('Redemption Code/Message (Hidden until redeemed, e.g. "Gift Card: AMZN-123"):');
+      
       const description = prompt('Description (optional):');
 
       teamSettings.customRewards.push({
         id: Date.now().toString(),
         name,
         cost: parseInt(cost, 10),
-        description: description || ''
+        description: description || '',
+        redemptionInfo: redemptionInfo || ''
       });
 
       // FIX: Save to Supabase

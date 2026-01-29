@@ -165,6 +165,20 @@ const DataManager = {
   _players: [],
   _initialized: false,
 
+
+ // --- FIX: Secure Rewards Update for Players ---
+  async updatePlayerRewards(id, rewards) {
+    if (!supabaseClient) return;
+    
+    // Call the secure RPC function we just created
+    const { error } = await supabaseClient.rpc('update_player_rewards', { 
+      player_id: id, 
+      new_rewards: rewards 
+    });
+
+    if (error) throw error;
+  }, 
+
   async init(force = false) {
     if (!supabaseClient) {
       this._players = [];

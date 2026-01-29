@@ -55,7 +55,6 @@ const Rewards = {
   },
 
   // Initialize player rewards data
-  // FIXED: Now robustly checks all properties even if rewards object exists
   initializePlayerRewards(player) {
     if (!player.rewards) {
       player.rewards = {};
@@ -279,6 +278,15 @@ const Rewards = {
           icon: badge.icon,
           earnedAt: new Date().toISOString()
         });
+
+        // --- FIXED: Award 20 points for every new badge ---
+        player.rewards.totalPoints += 20;
+        player.rewards.pointsHistory.push({
+          points: 20,
+          reason: `Badge Earned: ${badge.name}`,
+          date: new Date().toISOString()
+        });
+
         newBadges.push(badge);
       }
     });
