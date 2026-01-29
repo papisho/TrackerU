@@ -156,7 +156,6 @@
     </style>
 </head>
 <body>
-    <!-- Navigation -->
     <nav class="navbar">
         <div class="navbar-container">
             <div class="navbar-brand">
@@ -171,7 +170,6 @@
         </div>
     </nav>
 
-    <!-- Profile Header -->
     <div class="profile-header">
         <div class="container">
             <h1 id="playerName">Loading...</h1>
@@ -180,7 +178,6 @@
     </div>
 
     <div class="container">
-        <!-- Player Info -->
         <div class="profile-info" id="profileInfo">
             <div class="info-card">
                 <div class="info-label">Position</div>
@@ -200,10 +197,8 @@
             </div>
         </div>
 
-        <!-- AI Summary Section -->
         <div id="aiSummarySection"></div>
 
-        <!-- Tabs -->
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('metrics-tab')">📊 Performance Metrics</button>
             <button class="tab-btn" onclick="switchTab('analytics-tab')">📈 Analytics</button>
@@ -211,22 +206,18 @@
             <button class="tab-btn" onclick="switchTab('videos-tab')">🎬 Training Videos</button>
         </div>
 
-        <!-- Metrics Tab -->
         <div id="metrics-tab" class="tab-pane active">
             <div id="metricsContainer"></div>
         </div>
 
-        <!-- Analytics Tab -->
         <div id="analytics-tab" class="tab-pane">
             <div id="analyticsContainer"></div>
         </div>
 
-        <!-- Rewards Tab -->
         <div id="rewards-tab" class="tab-pane">
             <div id="rewardsContainer"></div>
         </div>
 
-        <!-- Videos Tab -->
         <div id="videos-tab" class="tab-pane">
             <div class="metric-section">
                 <h3 style="margin-bottom: var(--space-lg);">🎬 Assigned Training Videos</h3>
@@ -251,14 +242,26 @@
         let analyticsCharts = [];
 
         async function loadPlayerProfile() {
-            const player = await DataManager.getPlayerByCode(playerCode);
+            let player = await DataManager.getPlayerByCode(playerCode);
             
             if (!player) {
                 window.location.href = 'player-access.html';
                 return;
             }
 
-            currentPlayer = Rewards.initializePlayerRewards(player);
+            // Initialization
+            player = Rewards.initializePlayerRewards(player);
+
+            // --- SELF-HEALING: Check for missed badges and award them retroactively ---
+            const { player: updatedPlayer, newBadges } = Rewards.checkAndAwardBadges(player);
+            if (newBadges.length > 0) {
+                console.log('Retroactively awarded badges:', newBadges);
+                await DataManager.updatePlayer(player.id, { rewards: updatedPlayer.rewards });
+                player = updatedPlayer; // Use the updated player data
+            }
+            // ------------------------------------------------------------------------
+
+            currentPlayer = player;
 
             document.getElementById('playerName').textContent = `${player.firstName} ${player.lastName}`;
             document.getElementById('playerDetails').textContent = `${player.position} | Jersey #${player.jerseyNumber}`;

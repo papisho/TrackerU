@@ -131,7 +131,9 @@ const Rewards = {
       speed: watchData.speed
     });
 
-    return player;
+    // CHECK FOR BADGES
+    const { player: updatedPlayer } = this.checkAndAwardBadges(player);
+    return updatedPlayer;
   },
 
   // Record attendance
@@ -177,7 +179,9 @@ const Rewards = {
       }
     }
 
-    return player;
+    // CHECK FOR BADGES
+    const { player: updatedPlayer } = this.checkAndAwardBadges(player);
+    return updatedPlayer;
   },
 
   // Remove a specific attendance record
@@ -444,7 +448,6 @@ const CoachRewardsSettings = {
     await this.saveSettings(settings);
     return true;
   },
-  
   async toggleRewards(enabled) {
     const settings = await this.getSettings();
     settings.rewardsEnabled = enabled;
