@@ -228,10 +228,13 @@
 
         <!-- Attendance History -->
         <div class="metric-section" style="margin-top: var(--space-xl);">
-          <h3 style="margin-bottom: var(--space-lg);">📅 Recent Sessions</h3>
-          <div id="attendanceHistory"></div>
+          <details>
+            <summary style="font-size: 1.25rem; font-weight: 700; cursor: pointer; margin-bottom: var(--space-lg); outline: none;">
+              📅 Recent Sessions <span style="font-size: 0.8rem; color: var(--gray-600); font-weight: normal; margin-left: 10px;">(Click to View/Hide)</span>
+            </summary>
+            <div id="attendanceHistory"></div>
+          </details>
         </div>
-      </div>
 
       <!-- Rewards Settings Tab -->
       <div id="rewards-tab" class="tab-content">
