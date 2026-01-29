@@ -63,6 +63,16 @@ const UI = {
 
   formatDate(dateString) {
     if (!dateString) return '-';
+
+    // FIX: Handle YYYY-MM-DD strings explicitly to avoid UTC timezone shifts
+    // (e.g., prevent "2023-01-29" becoming "Jan 28" in Western timezones)
+    if (typeof dateString === 'string' && dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = dateString.split('-').map(Number);
+        // month is 0-indexed in JS Date
+        const date = new Date(year, month - 1, day); 
+        return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+
     const date = new Date(dateString);
     if (Number.isNaN(date.getTime())) return String(dateString);
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });

@@ -123,6 +123,7 @@ const Rewards = {
     const dateKey = String(sessionDate || '').split('T')[0];
     if (!dateKey) return player;
 
+
     // Prevent duplicate record for same date + sessionType
     const existingRecord = player.rewards.attendanceHistory.find(a => {
       const aDateKey = String(a.date || '').split('T')[0];
@@ -146,13 +147,37 @@ const Rewards = {
       player = this.awardPoints(player, this.POINTS.ATTENDANCE_PRESENT, 'Attended session', { date: dateKey, sessionType });
       player = this.updateStreak(player);
 
-      if (player.rewards.currentStreak === 3) player = this.awardPoints(player, this.POINTS.ATTENDANCE_STREAK_3, '3-day attendance streak!');
-      else if (player.rewards.currentStreak === 5) player = this.awardPoints(player, this.POINTS.ATTENDANCE_STREAK_5, '5-day attendance streak!');
+      if (player.rewards.currentStreak === 3) {
+        player = this.awardPoints(player, this.POINTS.ATTENDANCE_STREAK_3, '3-day attendance streak!');
+      } else if (player.rewards.currentStreak === 5) {
+        player = this.awardPoints(player, this.POINTS.ATTENDANCE_STREAK_5, '5-day attendance streak!');
+      }
     } else {
       player = this.updateStreak(player);
       if (normalizedAbsenceReason === 'other') {
         player = this.awardPoints(player, this.POINTS.ATTENDANCE_ABSENT_OTHER, 'Absent (other)', { date: dateKey, sessionType });
       }
+    }
+
+    return player;
+  },
+
+  // Remove a specific attendance record
+  removeAttendanceRecord(player, dateKey, sessionType) {
+    player = this.initializePlayerRewards(player);
+    
+    const initialLength = player.rewards.attendanceHistory.length;
+    
+    // Filter out the specific session
+    player.rewards.attendanceHistory = player.rewards.attendanceHistory.filter(r => {
+      const rDate = String(r.date || '').split('T')[0];
+      const rType = r.sessionType || 'training';
+      return !(rDate === dateKey && rType === sessionType);
+    });
+
+    // If we removed something, re-calculate the streak
+    if (player.rewards.attendanceHistory.length < initialLength) {
+      player = this.updateStreak(player);
     }
 
     return player;

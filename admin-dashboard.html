@@ -525,79 +525,176 @@ async function saveAttendance() {
 }
 
 
+    // --- NEW: Attendance History with Collapsible Items, Filters, and Delete ---
+
+    let attendanceHistoryFilterDate = '';
+
     function loadAttendanceHistory() {
       const container = document.getElementById('attendanceHistory');
       const players = DataManager.getPlayers();
 
-      // Gather all attendance records
-      const allRecords = [];
+      // 1. Gather all unique sessions
+      const sessions = {};
       players.forEach(player => {
-        // --- FIX IS HERE ---
-        // Ensure we are looking at player.rewards.attendanceHistory
         const rewards = player.rewards || {};
         if (rewards.attendanceHistory && Array.isArray(rewards.attendanceHistory)) {
           rewards.attendanceHistory.forEach(record => {
-            allRecords.push({
-              ...record,
-              playerName: `${player.firstName} ${player.lastName}`
-            });
+            const key = `${record.date}-${record.sessionType || 'training'}`;
+            if (!sessions[key]) {
+              sessions[key] = {
+                date: record.date,
+                sessionType: record.sessionType || 'training',
+                present: [],
+                absent: [],
+                timestamp: new Date(record.date).getTime()
+              };
+            }
+            if (record.present === true) {
+              sessions[key].present.push(`${player.firstName} ${player.lastName}`);
+            } else {
+              sessions[key].absent.push(`${player.firstName} ${player.lastName}`);
+            }
           });
         }
-        // --- END FIX ---
       });
 
-      // Sort by date (most recent first)
-      allRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
+      // 2. Convert to array and sort (Newest First)
+      let sortedSessions = Object.values(sessions).sort((a, b) => b.timestamp - a.timestamp);
 
-      if (allRecords.length === 0) {
-        container.innerHTML = '<p style="text-align: center; color: var(--gray-500); padding: var(--space-xl);">No attendance records yet.</p>';
+      // 3. Apply Date Filter if set
+      if (attendanceHistoryFilterDate) {
+        sortedSessions = sortedSessions.filter(s => s.date === attendanceHistoryFilterDate);
+      }
+
+      // 4. Build UI
+      if (sortedSessions.length === 0) {
+        container.innerHTML = `
+           <div style="margin-bottom: var(--space-md); display: flex; gap: var(--space-sm);">
+              <input type="date" class="form-input" style="width: auto;" onchange="filterHistoryByDate(this.value)" value="${attendanceHistoryFilterDate}">
+              ${attendanceHistoryFilterDate ? '<button class="btn btn-outline" onclick="filterHistoryByDate(\'\')">Clear Filter</button>' : ''}
+           </div>
+           <p style="text-align: center; color: var(--gray-500); padding: var(--space-xl);">No attendance records found.</p>
+        `;
         return;
       }
 
-      // Group by date and session
-      const sessions = {};
-      allRecords.forEach(record => {
-        const key = `${record.date}-${record.sessionType || 'training'}`;
-        if (!sessions[key]) {
-          sessions[key] = {
-            date: record.date,
-            sessionType: record.sessionType || 'training',
-            present: [],
-            absent: []
-          };
-        }
-        
-        if (record.present === true) {
-          sessions[key].present.push(record.playerName);
-        } else {
-          sessions[key].absent.push(record.playerName);
-        }
+      // Header with Filter and "Delete All" Danger Button
+      let html = `
+        <div style="margin-bottom: var(--space-lg); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <div style="display: flex; gap: var(--space-sm); align-items: center;">
+             <label style="font-weight: 600; color: var(--gray-700);">Filter by Date:</label>
+             <input type="date" class="form-input" style="width: auto; padding: 6px;" onchange="filterHistoryByDate(this.value)" value="${attendanceHistoryFilterDate}">
+             ${attendanceHistoryFilterDate ? '<button class="btn btn-outline btn-sm" onclick="filterHistoryByDate(\'\')">Clear</button>' : ''}
+          </div>
+          <button class="btn btn-danger btn-sm" onclick="clearAllAttendanceHistory()">🗑️ Delete Entire History</button>
+        </div>
+      `;
+
+      sortedSessions.forEach(session => {
+        // We use <details> for native collapsible behavior
+        html += `
+          <details style="background: white; border-radius: var(--radius-md); margin-bottom: var(--space-md); box-shadow: var(--shadow-sm); border: 1px solid var(--gray-200); overflow: hidden;">
+            <summary style="padding: var(--space-md); cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: var(--gray-50); list-style: none;">
+              <div style="display: flex; align-items: center; gap: var(--space-md);">
+                <span style="font-size: 1.2em;">👉</span>
+                <div>
+                  <strong style="font-size: var(--font-size-lg); display: block;">${UI.formatDate(session.date)}</strong>
+                  <span style="color: var(--gray-600); text-transform: capitalize; font-size: var(--font-size-sm);">${session.sessionType}</span>
+                </div>
+              </div>
+              <div style="display: flex; align-items: center; gap: var(--space-md);">
+                <div style="text-align: right;">
+                  <span style="color: var(--success); font-weight: 700; display: block;">${session.present.length} Present</span>
+                  <span style="color: var(--danger); font-size: var(--font-size-sm);">${session.absent.length} Absent</span>
+                </div>
+                <span style="font-size: 0.8em; color: var(--gray-400);">▼</span>
+              </div>
+            </summary>
+            
+            <div style="padding: var(--space-lg); border-top: 1px solid var(--gray-200);">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-lg); margin-bottom: var(--space-lg);">
+                <div>
+                   <h5 style="color: var(--success); margin-bottom: var(--space-sm);">✅ Present</h5>
+                   ${session.present.length ? `<ul style="margin: 0; padding-left: 20px;">${session.present.map(n => `<li>${n}</li>`).join('')}</ul>` : '<span style="color: var(--gray-500); font-style: italic;">None</span>'}
+                </div>
+                <div>
+                   <h5 style="color: var(--danger); margin-bottom: var(--space-sm);">❌ Absent</h5>
+                   ${session.absent.length ? `<ul style="margin: 0; padding-left: 20px;">${session.absent.map(n => `<li>${n}</li>`).join('')}</ul>` : '<span style="color: var(--gray-500); font-style: italic;">None</span>'}
+                </div>
+              </div>
+              
+              <div style="text-align: right; border-top: 1px solid var(--gray-100); padding-top: var(--space-md);">
+                 <button class="btn btn-danger btn-sm" onclick="deleteSession('${session.date}', '${session.sessionType}')">Delete this Session</button>
+              </div>
+            </div>
+          </details>
+        `;
       });
 
-      container.innerHTML = '';
-      Object.values(sessions).slice(0, 10).forEach(session => {
-        const div = document.createElement('div');
-        div.style.cssText = 'background: white; padding: var(--space-lg); border-radius: var(--radius-md); margin-bottom: var(--space-md); box-shadow: var(--shadow-sm);';
-        div.innerHTML = `
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
-            <div>
-              <strong style="font-size: var(--font-size-lg);">${UI.formatDate(session.date)}</strong>
-              <span style="margin-left: var(--space-md); color: var(--gray-600); text-transform: capitalize;">${session.sessionType}</span>
-            </div>
-            <div>
-              <span style="background: var(--success); color: white; padding: 4px 12px; border-radius: var(--radius-full); margin-right: var(--space-sm);">
-                ${session.present.length} present
-              </span>
-              <span style="background: var(--danger); color: white; padding: 4px 12px; border-radius: var(--radius-full);">
-                ${session.absent.length} absent
-              </span>
-            </div>
-          </div>
-          ${session.present.length > 0 ? `<div style="font-size: var(--font-size-sm); color: var(--gray-600);"><strong>Present:</strong> ${session.present.join(', ')}</div>` : ''}
-          ${session.absent.length > 0 ? `<div style="font-size: var(--font-size-sm); color: var(--gray-600); margin-top: var(--space-xs);"><strong>Absent:</strong> ${session.absent.join(', ')}</div>` : ''}
-        `;
-        container.appendChild(div);
-      });
+      container.innerHTML = html;
+    }
+
+    // Helper: Filter by date
+    window.filterHistoryByDate = function(date) {
+      attendanceHistoryFilterDate = date;
+      loadAttendanceHistory();
+    }
+
+    // Helper: Delete a specific session (iterates through all players)
+    window.deleteSession = async function(date, sessionType) {
+      if (!confirm(`Are you sure you want to delete the ${sessionType} session on ${UI.formatDate(date)}? This will remove the record for ALL players.`)) return;
+
+      try {
+        const players = DataManager.getPlayers();
+        let updateCount = 0;
+
+        for (const player of players) {
+          // Remove from local object
+          const updatedPlayer = Rewards.removeAttendanceRecord(player, date, sessionType);
+          
+          // Save to Supabase
+          // Optimization: Only update if the history length actually changed or we suspect a change
+          if (updatedPlayer) {
+             await DataManager.updatePlayer(player.id, { rewards: updatedPlayer.rewards });
+             updateCount++;
+          }
+        }
+
+        UI.showAlert(`Deleted session. Updated records for ${updateCount} players.`, 'success');
+        await DataManager.init(true);
+        loadAttendanceHistory();
+        computeStats(DataManager.getPlayers()); // Refresh dashboard stats
+      } catch (err) {
+        UI.showAlert('Error deleting session: ' + err.message, 'danger');
+      }
+    }
+
+    // Helper: Delete ENTIRE history
+    window.clearAllAttendanceHistory = async function() {
+      const confirm1 = confirm("⚠️ DANGER ZONE ⚠️\n\nThis will delete EVERY attendance record for EVERY player.\n\nAre you absolutely sure?");
+      if (!confirm1) return;
+      
+      const confirm2 = confirm("Final Confirmation: This cannot be undone. Delete all attendance history?");
+      if (!confirm2) return;
+
+      try {
+        const players = DataManager.getPlayers();
+        for (const player of players) {
+          if (player.rewards) {
+             player.rewards.attendanceHistory = [];
+             // Reset streak
+             player.rewards.currentStreak = 0;
+             player.rewards.longestStreak = 0; // Optional: keep longest streak or reset? Usually reset if history is gone.
+             await DataManager.updatePlayer(player.id, { rewards: player.rewards });
+          }
+        }
+        UI.showAlert('All attendance history has been wiped.', 'success');
+        await DataManager.init(true);
+        loadAttendanceHistory();
+        computeStats(DataManager.getPlayers());
+      } catch (err) {
+        UI.showAlert('Error clearing history: ' + err.message, 'danger');
+      }
     }
 
     function loadRewardsSettings() {
