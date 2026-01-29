@@ -237,10 +237,11 @@
         </div>
 
       <!-- Rewards Settings Tab -->
-      <div id="rewards-tab" class="tab-content">
+      </div> <div id="rewards-tab" class="tab-content">
         <div class="rewards-settings">
           <h2 style="margin-bottom: var(--space-lg);">🎯 Rewards System
             Settings</h2>
+            
 
           <!-- Toggle Rewards -->
           <div class="rewards-toggle">
@@ -768,12 +769,6 @@ async function saveAttendance() {
       }
     }
 
-    function removeCustomReward(rewardId) {
-      if (!confirm('Remove this reward?')) return;
-      teamSettings.customRewards = teamSettings.customRewards.filter(r => r.id !== rewardId);
-      localStorage.setItem('teamSettings', JSON.stringify(teamSettings));
-      renderCustomRewards();
-    }
 
     function renderCustomRewards() {
       const container = document.getElementById('customRewardsList');

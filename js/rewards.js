@@ -444,6 +444,7 @@ const CoachRewardsSettings = {
     await this.saveSettings(settings);
     return true;
   },
+  
   async toggleRewards(enabled) {
     const settings = await this.getSettings();
     settings.rewardsEnabled = enabled;
