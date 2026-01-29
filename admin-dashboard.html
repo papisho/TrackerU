@@ -128,6 +128,42 @@
       box-shadow: 0 0 0 3px var(--primary-light);
     }
 
+    /* FIX #3: Recent Sessions Collapsible Styles */
+    .attendance-history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      padding: var(--space-md);
+      background: var(--gray-50);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--space-md);
+      user-select: none;
+    }
+
+    .attendance-history-header:hover {
+      background: var(--gray-100);
+    }
+
+    .attendance-history-toggle {
+      font-size: 24px;
+      transition: transform 0.3s ease;
+    }
+
+    .attendance-history-toggle.collapsed {
+      transform: rotate(-90deg);
+    }
+
+    .attendance-history-content {
+      max-height: 1000px;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+
+    .attendance-history-content.collapsed {
+      max-height: 0;
+    }
+
     @media (max-width: 768px) {
       .context-grid { grid-template-columns: 1fr; }
     }
@@ -226,10 +262,15 @@
           <div class="attendance-grid" id="attendanceGrid"></div>
         </div>
 
-        <!-- Attendance History -->
+        <!-- Attendance History (FIX #3: Made Collapsible) -->
         <div class="metric-section" style="margin-top: var(--space-xl);">
-          <h3 style="margin-bottom: var(--space-lg);">📅 Recent Sessions</h3>
-          <div id="attendanceHistory"></div>
+          <div class="attendance-history-header" onclick="toggleAttendanceHistory()">
+            <h3 style="margin: 0;">📅 Recent Sessions</h3>
+            <span class="attendance-history-toggle" id="attendanceHistoryToggle">▼</span>
+          </div>
+          <div class="attendance-history-content" id="attendanceHistoryContent">
+            <div id="attendanceHistory"></div>
+          </div>
         </div>
       </div>
 
@@ -408,9 +449,22 @@
       }
     }
 
+    // FIX #3: Toggle function for collapsible Recent Sessions
+    function toggleAttendanceHistory() {
+      const content = document.getElementById('attendanceHistoryContent');
+      const toggle = document.getElementById('attendanceHistoryToggle');
+      
+      content.classList.toggle('collapsed');
+      toggle.classList.toggle('collapsed');
+    }
+
     function loadAttendanceTab() {
-      // Set today's date
-      document.getElementById('attendanceDate').value = new Date().toISOString().split('T')[0];
+      // FIX #2: Removed timezone conversion that was causing date offset
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      document.getElementById('attendanceDate').value = `${year}-${month}-${day}`;
       
       const players = DataManager.getPlayers();
       const grid = document.getElementById('attendanceGrid');
@@ -674,6 +728,7 @@ async function saveAttendance() {
     window.toggleRewards = toggleRewards;
     window.addCustomReward = addCustomReward;
     window.removeCustomReward = removeCustomReward;
+    window.toggleAttendanceHistory = toggleAttendanceHistory;
 
     function populatePlayerDropdown() {
       const players = DataManager.getPlayers();
@@ -1278,7 +1333,12 @@ async function saveAttendance() {
       document.getElementById('playerDetails').innerHTML = html;
       UI.openModal('playerModal');
 
-      document.getElementById('contextDate').value = new Date().toISOString().split('T')[0];
+      // FIX #2: Set context date without timezone conversion
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      document.getElementById('contextDate').value = `${year}-${month}-${day}`;
 
       document.getElementById('editPlayerForm').addEventListener('submit', async (e) => {
         e.preventDefault();
