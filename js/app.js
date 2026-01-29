@@ -400,8 +400,46 @@ async getPlayerByCode(code) {
       console.error('Failed to submit admin request:', error.message);
       throw new Error(error.message);
     }
+  
+},
+
+  // --- NEW: Team Settings Management ---
+  
+  async getTeamSettings() {
+    if (!supabaseClient) return { rewardsEnabled: false, customRewards: [] };
+    
+    const { data, error } = await supabaseClient
+      .from('team_settings')
+      .select('*')
+      .single(); // We only have one row
+      
+    if (error) {
+      console.error('Error fetching settings:', error);
+      return { rewardsEnabled: false, customRewards: [] };
+    }
+    
+    return {
+      rewardsEnabled: data.rewards_enabled,
+      customRewards: data.custom_rewards || []
+    };
+
+  },
+
+  async updateTeamSettings(settings) {
+    if (!supabaseClient) return;
+
+    // We assume we are updating row ID 1
+    const { error } = await supabaseClient
+      .from('team_settings')
+      .update({
+        rewards_enabled: settings.rewardsEnabled,
+        custom_rewards: settings.customRewards
+      })
+      .eq('id', 1); // Always update the first row
+
+    if (error) throw new Error(error.message);
   }
-};
+  };
 
 // =========================
 // Simple rule-based "AI" helper for player summaries

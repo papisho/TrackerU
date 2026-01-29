@@ -700,32 +700,39 @@ async function saveAttendance() {
       }
     }
 
-    function loadRewardsSettings() {
-      // Load settings from localStorage
-      const saved = localStorage.getItem('teamSettings');
-      if (saved) {
-        teamSettings = JSON.parse(saved);
+    async function loadRewardsSettings() {
+      // FIX: Load from Supabase, not LocalStorage
+      try {
+        const settings = await DataManager.getTeamSettings();
+        teamSettings = settings;
+
+        // Update toggle UI
+        const toggle = document.getElementById('rewardsToggle');
+        toggle.className = teamSettings.rewardsEnabled ? 'toggle-switch active' : 'toggle-switch';
+
+        renderCustomRewards();
+      } catch (err) {
+        console.error("Failed to load settings", err);
       }
-
-      // Update toggle
-      const toggle = document.getElementById('rewardsToggle');
-      toggle.className = teamSettings.rewardsEnabled ? 'toggle-switch active' : 'toggle-switch';
-
-      // Render custom rewards
-      renderCustomRewards();
     }
 
-    function toggleRewards() {
+    async function toggleRewards() {
       teamSettings.rewardsEnabled = !teamSettings.rewardsEnabled;
-      localStorage.setItem('teamSettings', JSON.stringify(teamSettings));
-      loadRewardsSettings();
-      UI.showAlert(`Rewards ${teamSettings.rewardsEnabled ? 'enabled' : 'disabled'}`, 'success');
+      
+      // FIX: Save to Supabase
+      try {
+        await DataManager.updateTeamSettings(teamSettings);
+        loadRewardsSettings(); // Refresh UI
+        UI.showAlert(`Rewards ${teamSettings.rewardsEnabled ? 'enabled' : 'disabled'}`, 'success');
+      } catch (err) {
+        UI.showAlert('Failed to save settings', 'danger');
+      }
     }
 
-    function addCustomReward() {
-      const name = prompt('Reward Name:');
+    async function addCustomReward() {
+      const name = prompt('Reward Name (e.g., "Pizza Party"):');
       if (!name) return;
-      const cost = prompt('Points Cost:');
+      const cost = prompt('Points Cost (e.g., 500):');
       if (!cost) return;
       const description = prompt('Description (optional):');
 
@@ -736,8 +743,29 @@ async function saveAttendance() {
         description: description || ''
       });
 
-      localStorage.setItem('teamSettings', JSON.stringify(teamSettings));
-      renderCustomRewards();
+      // FIX: Save to Supabase
+      try {
+        await DataManager.updateTeamSettings(teamSettings);
+        renderCustomRewards();
+        UI.showAlert('Reward added', 'success');
+      } catch (err) {
+        UI.showAlert('Failed to save reward', 'danger');
+      }
+    }
+
+    async function removeCustomReward(rewardId) {
+      if (!confirm('Remove this reward?')) return;
+      
+      teamSettings.customRewards = teamSettings.customRewards.filter(r => r.id !== rewardId);
+      
+      // FIX: Save to Supabase
+      try {
+        await DataManager.updateTeamSettings(teamSettings);
+        renderCustomRewards();
+        UI.showAlert('Reward removed', 'success');
+      } catch (err) {
+        UI.showAlert('Failed to remove reward', 'danger');
+      }
     }
 
     function removeCustomReward(rewardId) {

@@ -397,12 +397,14 @@
             });
         }
 
-        function loadRewards(player) {
+        async function loadRewards(player) {
             const rewardsContainer = document.getElementById('rewardsContainer');
             const summary = Rewards.getRewardsSummary(player);
+            
+            // 1. Fetch Settings from Supabase
+            const settings = await DataManager.getTeamSettings();
 
-            rewardsContainer.innerHTML = `
-                <!-- Points Banner -->
+            let html = `
                 <div class="points-banner">
                     <div class="points-value">${summary.totalPoints}</div>
                     <div class="points-label">Total Points Earned</div>
@@ -424,32 +426,49 @@
                             <div class="points-stat-label">Streak</div>
                         </div>
                     </div>
-                </div>
+                </div>`;
 
-                ${summary.nextMilestone ? `
-                    <div class="milestone-card">
-                        <div class="milestone-header">
-                            <span class="milestone-icon">${summary.nextMilestone.icon}</span>
-                            <div class="milestone-info">
-                                <div class="milestone-title">Next Goal: ${summary.nextMilestone.name}</div>
-                                <div class="milestone-description">${summary.nextMilestone.description}</div>
+            // 2. SHOW REDEMPTION SECTION ONLY IF ENABLED
+            if (settings.rewardsEnabled && settings.customRewards.length > 0) {
+                html += `
+                <div class="metric-section" style="background: #fff8e1; border-left: 4px solid #f39c12;">
+                    <h3 style="margin-bottom: var(--space-md);">🎁 Rewards Marketplace</h3>
+                    <p style="font-size: 0.9em; color: var(--gray-600); margin-bottom: var(--space-lg);">Redeem your hard-earned points for real rewards from your coach!</p>
+                    <div class="grid grid-2">
+                `;
+                
+                settings.customRewards.forEach(reward => {
+                    const canAfford = player.rewards.totalPoints >= reward.cost;
+                    html += `
+                        <div style="background: white; padding: var(--space-md); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; justify-content: space-between;">
+                            <div>
+                                <div style="font-weight: 700; font-size: 1.1em;">${reward.name}</div>
+                                <div style="color: var(--gray-600); font-size: 0.9em;">${reward.description}</div>
+                            </div>
+                            <div style="margin-top: var(--space-md); display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-weight: 700; color: #f39c12;">${reward.cost} pts</span>
+                                <button class="btn btn-sm ${canAfford ? 'btn-primary' : 'btn-outline'}" 
+                                    style="${canAfford ? '' : 'opacity: 0.5; cursor: not-allowed;'}"
+                                    onclick="${canAfford ? `redeemReward('${reward.id}', ${reward.cost}, '${reward.name}')` : ''}">
+                                    ${canAfford ? 'Redeem' : 'Need Points'}
+                                </button>
                             </div>
                         </div>
-                        <div class="milestone-progress">
-                            <div class="milestone-progress-bar">
-                                <div class="milestone-progress-fill" style="width: ${summary.nextMilestone.progress}%;"></div>
-                            </div>
-                            <div class="milestone-progress-text">${summary.nextMilestone.progress.toFixed(0)}% Complete</div>
-                        </div>
-                    </div>
-                ` : ''}
+                    `;
+                });
+                
+                html += `</div></div>`;
+            }
 
-                <!-- Badges Section -->
+            // 3. Badges Section
+            html += `
                 <div class="metric-section">
                     <h3 style="margin-bottom: var(--space-lg);">🏆 Your Badges</h3>
                     <div class="badges-container" id="badgesContainer"></div>
                 </div>
             `;
+            
+            rewardsContainer.innerHTML = html;
 
             // Render badges
             const badgesContainer = document.getElementById('badgesContainer');
@@ -472,6 +491,24 @@
                 `;
                 badgesContainer.appendChild(badgeCard);
             });
+        }
+
+        // Add this helper function to handle redemptions
+        async function redeemReward(rewardId, cost, name) {
+            if(!confirm(`Spend ${cost} points to redeem "${name}"?`)) return;
+            
+            try {
+                // Update local object
+                const updatedPlayer = Rewards.redeemReward(currentPlayer, cost, name);
+                
+                // Save to Supabase
+                await DataManager.updatePlayer(updatedPlayer.id, { rewards: updatedPlayer.rewards });
+                
+                alert(`Successfully redeemed ${name}! Show this to your coach.`);
+                loadPlayerProfile(); // Refresh UI
+            } catch(err) {
+                alert("Error: " + err.message);
+            }
         }
 
         function loadAnalytics(player) {

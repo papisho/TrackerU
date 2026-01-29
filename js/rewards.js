@@ -88,6 +88,24 @@ const Rewards = {
     return player;
   },
 
+  // Deduct points (for redeeming rewards)
+  redeemReward(player, cost, rewardName) {
+    player = this.initializePlayerRewards(player);
+    
+    if (player.rewards.totalPoints < cost) {
+      throw new Error('Insufficient points');
+    }
+
+    player.rewards.totalPoints -= cost;
+    player.rewards.pointsHistory.push({
+      points: -cost,
+      reason: `Redeemed: ${rewardName}`,
+      date: new Date().toISOString()
+    });
+
+    return player;
+  },
+
   // Record video watch completion
   recordVideoWatch(player, videoId, watchData) {
     player = this.initializePlayerRewards(player);
