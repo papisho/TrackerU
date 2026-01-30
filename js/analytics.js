@@ -55,6 +55,111 @@ const Analytics = {
   /**
    * COACH ANALYTICS: Generate team-wide analytics
    */
+
+  // --- NEW: Player DNA / Archetype Logic ---
+  generatePlayerDNA(player) {
+    if (!player || !player.metrics) return null;
+
+    // 1. Flatten metrics to find the top 3 highest rated
+    const allMetrics = [];
+    Object.values(player.metrics).forEach(category => {
+      Object.entries(category).forEach(([key, val]) => {
+        if (typeof val.level === 'number') {
+          allMetrics.push({ key, value: val.level });
+        }
+      });
+    });
+
+    // Sort descending by value
+    allMetrics.sort((a, b) => b.value - a.value);
+    
+    // If no data, return neutral
+    if (allMetrics.length === 0 || allMetrics[0].value === 0) return null;
+
+    const topStats = allMetrics.slice(0, 3).map(m => m.key);
+
+    // 2. Define Archetypes
+    const archetypes = [
+      {
+        id: 'maestro',
+        name: 'The Maestro 🎻',
+        description: 'You control the game with elite vision, passing, and intelligence.',
+        criteria: ['passing', 'decisionMaking', 'spaceUsage', 'ballControl', 'anticipation'],
+        gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        textColor: 'white'
+      },
+      {
+        id: 'speedster',
+        name: 'The Speedster ⚡',
+        description: 'Your electric pace and agility make you a nightmare for defenders.',
+        criteria: ['speed', 'agility', 'ballControl', 'stamina'],
+        gradient: 'linear-gradient(135deg, #f6d365 0%, #fda085 100%)',
+        textColor: '#1f2937' // Dark text for yellow bg
+      },
+      {
+        id: 'engine',
+        name: 'The Engine 🚂',
+        description: 'Relentless energy. You cover every blade of grass and never stop working.',
+        criteria: ['stamina', 'performance', 'versatility', 'selfDevelopment'],
+        gradient: 'linear-gradient(135deg, #0ba360 0%, #3cba92 100%)',
+        textColor: 'white'
+      },
+      {
+        id: 'wall',
+        name: 'The Wall 🛡️',
+        description: 'A defensive rock. You win your duels and read the danger before it happens.',
+        criteria: ['duels', 'anticipation', 'focus', 'emotionControl'],
+        gradient: 'linear-gradient(135deg, #434343 0%, #000000 100%)',
+        textColor: 'white'
+      },
+      {
+        id: 'sniper',
+        name: 'The Sniper 🎯',
+        description: 'Ice cold in front of goal. Your striking technique is your superpower.',
+        criteria: ['ballStriking', 'focus', 'decisionMaking', 'emotionControl'],
+        gradient: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%)',
+        textColor: '#1f2937'
+      },
+      {
+        id: 'captain',
+        name: 'The General 🦁',
+        description: 'A natural leader. You drive standards with your voice and mentality.',
+        criteria: ['vocal', 'mentality', 'selfDevelopment', 'performance'],
+        gradient: 'linear-gradient(135deg, #FDC830 0%, #F37335 100%)',
+        textColor: 'white'
+      }
+    ];
+
+    // 3. Find the best fit
+    // We check how many of the player's Top 3 stats appear in each archetype's criteria
+    let bestFit = null;
+    let maxMatches = -1;
+
+    archetypes.forEach(arch => {
+      const matchCount = topStats.filter(stat => arch.criteria.includes(stat)).length;
+      if (matchCount > maxMatches) {
+        maxMatches = matchCount;
+        bestFit = arch;
+      }
+    });
+
+    // Default if no strong match found yet
+    if (!bestFit || maxMatches === 0) {
+        bestFit = {
+            name: "The Prospect 💎",
+            description: "A well-rounded player developing a unique style. Keep working to define your game!",
+            gradient: "linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)",
+            textColor: '#1f2937'
+        };
+    }
+
+    return {
+        ...bestFit,
+        topStats: topStats // Pass these back to display them
+    };
+  },
+
+
   generateCoachAnalytics(players) {
     if (!Array.isArray(players) || players.length === 0) {
       return {

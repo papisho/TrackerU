@@ -220,6 +220,67 @@
             color: var(--gray-700);
             line-height: 1.8;
         }
+
+        /* Player DNA Card */
+        .dna-card {
+            padding: var(--space-xl);
+            border-radius: var(--radius-lg);
+            color: white;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .dna-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .dna-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .dna-label {
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 0.8rem;
+            opacity: 0.9;
+            font-weight: 700;
+            margin-bottom: var(--space-xs);
+        }
+
+        .dna-title {
+            font-size: 2.5rem;
+            font-weight: 900;
+            margin-bottom: var(--space-md);
+            line-height: 1.1;
+        }
+
+        .dna-description {
+            font-size: 1.1rem;
+            opacity: 0.95;
+            line-height: 1.5;
+            max-width: 90%;
+            margin-bottom: var(--space-lg);
+        }
+
+        .dna-stats-row {
+            display: flex;
+            gap: var(--space-sm);
+            flex-wrap: wrap;
+        }
+
+        .dna-stat-badge {
+            background: rgba(255,255,255,0.25);
+            backdrop-filter: blur(4px);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
     </style>
 </head>
 <body>
@@ -855,10 +916,12 @@
                             </div>
                         </div>
                     </div>
-                    <div class="metric-section">
-                        <h3 style="margin-bottom: var(--space-lg);">📌 Biggest Changes</h3>
-                        <div class="progress-list" id="progressList"></div>
+                    
+                    <div class="metric-section" style="border:none; padding:0; background:transparent; box-shadow:none;">
+                        <h3 style="margin-bottom: var(--space-lg);">🧬 Your Player DNA</h3>
+                        <div id="playerDnaContainer"></div>
                     </div>
+
                 </div>
             `;
 
@@ -867,28 +930,36 @@
                 analyticsCharts.push(Analytics.createRadarChart('radarChart', analyticsData.categoryAverages));
                 analyticsCharts.push(Analytics.createDistributionChart('distributionChart', analyticsData.ratingDistribution));
 
-                const progressList = document.getElementById('progressList');
-                analyticsData.trends.slice(0, 10).forEach(trend => {
-                    const trendClass = trend.trend;
-                    const trendIcon = trend.change > 0 ? '↑' : trend.change < 0 ? '↓' : '→';
-                    const trendColor = trend.change > 0 ? 'up' : trend.change < 0 ? 'down' : 'stable';
-                    
-                    progressList.innerHTML += `
-                        <div class="progress-item ${trendClass}">
-                            <div class="progress-header">
-                                <span class="progress-name">${trend.label}</span>
-                                <span class="progress-trend ${trendColor}">${trendIcon} ${Math.abs(trend.change).toFixed(1)}</span>
-                            </div>
-                            <div class="progress-bar-container">
-                                <div class="progress-bar" style="width: ${(trend.lastRating / 10) * 100}%;"></div>
-                            </div>
-                            <div class="progress-details">
-                                <span>From ${trend.firstRating}/10</span>
-                                <span>Now ${trend.lastRating}/10</span>
+                
+                // --- NEW: Render Player DNA ---
+                const dna = Analytics.generatePlayerDNA(player);
+                const dnaContainer = document.getElementById('playerDnaContainer');
+                
+                if (dna) {
+                    const formatKey = (k) => k.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+
+                    dnaContainer.innerHTML = `
+                        <div class="dna-card" style="background: ${dna.gradient}; color: ${dna.textColor};">
+                            <div class="dna-content">
+                                <div class="dna-label">Scouting Report Archetype</div>
+                                <div class="dna-title">${dna.name}</div>
+                                <div class="dna-description">${dna.description}</div>
+                                
+                                <div style="margin-top: 15px; font-size: 0.85rem; opacity: 0.9; margin-bottom: 8px; font-weight:600;">Dominant Attributes:</div>
+                                <div class="dna-stats-row">
+                                    ${dna.topStats.map(stat => `
+                                        <div class="dna-stat-badge" style="border-color: ${dna.textColor === 'white' ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.1)'}; background: ${dna.textColor === 'white' ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.6)'};">
+                                            ${formatKey(stat)}
+                                        </div>
+                                    `).join('')}
+                                </div>
                             </div>
                         </div>
                     `;
-                });
+                } else {
+                    dnaContainer.innerHTML = '<p style="color:var(--gray-500); font-style:italic;">Not enough data yet to determine player archetype.</p>';
+                }
+
             }, 100);
         }
 
