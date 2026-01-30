@@ -144,7 +144,7 @@ const Rewards = {
     const alreadyWatched = player.rewards.videoWatchHistory.find(v => v.videoId === videoId);
     if (alreadyWatched) return player;
 
-    if (watchData.speed > 1.2 || watchData.completion < 95) return player;
+    if (watchData.speed > 1.3 || watchData.completion < 90) return player;
 
     // Award points
     player = this.awardPoints(player, this.POINTS.VIDEO_WATCHED, 'Watched training video', {

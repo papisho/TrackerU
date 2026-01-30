@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="https://www.youtube.com/iframe_api"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Player Profile - TrackerU</title>
@@ -435,6 +436,109 @@
             });
         }
 
+       // --- NEW: Smart Video Tracking Logic ---
+        
+        // Queue to hold videos until YouTube API is ready
+        let videoPlayersQueue = [];
+        let youtubeApiReady = false;
+
+        // Required global callback for YouTube API
+        window.onYouTubeIframeAPIReady = function() {
+            youtubeApiReady = true;
+            processVideoQueue();
+        };
+
+        function processVideoQueue() {
+            if (!youtubeApiReady) return;
+            
+            videoPlayersQueue.forEach(v => {
+                new YT.Player(v.containerId, {
+                    height: '315',
+                    width: '100%',
+                    videoId: v.videoId,
+                    playerVars: { 'playsinline': 1, 'modestbranding': 1 },
+                    events: {
+                        'onStateChange': (e) => onPlayerStateChange(e, v.videoId, v.title),
+                        'onPlaybackRateChange': onPlayerSpeedChange
+                    }
+                });
+            });
+            videoPlayersQueue = [];
+        }
+
+        // 1. Enforce Speed Limit
+        function onPlayerSpeedChange(event) {
+            const speed = event.data;
+            if (speed > 1.25) {
+                alert("⚠️ Speed Limit: To earn credit, please watch at 1.25x speed or slower.");
+                event.target.setPlaybackRate(1); // Force reset to normal
+            }
+        }
+
+        // 2. Track Completion (Anti-Skip)
+        // We use a simple map to track start times to prevent skipping to the end
+        const watchSessions = {};
+
+        function onPlayerStateChange(event, videoId, videoTitle) {
+            const player = event.target;
+            
+            // PLAYING
+            if (event.data === YT.PlayerState.PLAYING) {
+                if (!watchSessions[videoId]) {
+                    watchSessions[videoId] = { startTime: Date.now(), initialDuration: player.getDuration() };
+                }
+            }
+
+            // ENDED
+            if (event.data === YT.PlayerState.ENDED) {
+                handleVideoCompletion(player, videoId, videoTitle);
+            }
+        }
+
+        async function handleVideoCompletion(player, videoId, videoTitle) {
+            // 1. Check if already watched
+            const alreadyWatched = currentPlayer.rewards.videoWatchHistory.find(v => v.videoId === videoId);
+            if (alreadyWatched) return;
+
+            // 2. Anti-Skip Check
+            // Calculate minimum required time (Duration / MaxSpeed) with 10% buffer
+            const duration = player.getDuration();
+            const session = watchSessions[videoId];
+            
+            if (!session) return; // Should not happen
+
+            const timeSpent = (Date.now() - session.startTime) / 1000; // seconds
+            const minTimeRequired = (duration / 1.25) * 0.9; 
+
+            if (timeSpent < minTimeRequired) {
+                alert(`⚠️ It looks like you skipped parts of the video.\n\nPlease watch the full video to earn your ${Rewards.POINTS.VIDEO_WATCHED} points.`);
+                return;
+            }
+
+            // 3. Success! Award Points
+            try {
+                const watchData = {
+                    speed: player.getPlaybackRate(),
+                    completion: 100,
+                    watchTime: duration
+                };
+
+                const updatedPlayer = Rewards.recordVideoWatch(currentPlayer, videoId, watchData);
+                
+                // Save to Supabase (Secure Update)
+                await DataManager.updatePlayerRewards(updatedPlayer.id, updatedPlayer.rewards);
+                
+                // UI Feedback
+                alert(`🎉 Awesome! You earned ${Rewards.POINTS.VIDEO_WATCHED} points for watching "${videoTitle}"!`);
+                
+                // Refresh Profile to show new points/badges
+                loadPlayerProfile();
+
+            } catch (err) {
+                console.error("Video save error:", err);
+            }
+        }
+
         function loadVideos(player) {
             const videosContainer = document.getElementById('videosContainer');
             videosContainer.innerHTML = '';
@@ -444,26 +548,52 @@
                 return;
             }
 
-            player.assignedVideos.forEach(video => {
+            player.assignedVideos.forEach((video, index) => {
+                const videoId = UI.getYouTubeId(video.url);
+                const isWatched = player.rewards.videoWatchHistory.some(h => h.videoId === videoId);
+                const containerId = `yt-player-${index}`;
+
                 const videoCard = document.createElement('div');
                 videoCard.className = 'video-card';
+                if (isWatched) {
+                    videoCard.style.borderLeft = '4px solid #2ecc71';
+                    videoCard.style.background = '#f0fdf4';
+                }
                 
-                const embedUrl = UI.convertToEmbedUrl(video.url);
-                
-                videoCard.innerHTML = `
-                    <div class="video-title">${video.title}</div>
-                    <div class="video-date">📅 Assigned: ${UI.formatDate(video.assignedDate)}</div>
-                    ${embedUrl ? `
-                        <div style="margin-top: var(--space-md);">
-                            <iframe width="100%" height="315" src="${embedUrl}" 
-                                frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                                allowfullscreen style="border-radius: var(--radius-md);"></iframe>
-                        </div>
-                    ` : ''}
+                let contentHtml = `
+                    <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom: 10px;">
+                        <div class="video-title" style="margin:0;">${video.title}</div>
+                        ${isWatched 
+                            ? '<span style="background:#2ecc71; color:white; padding:2px 8px; border-radius:10px; font-size:12px; font-weight:bold;">✅ Watched</span>' 
+                            : `<span style="background:#eab308; color:white; padding:2px 8px; border-radius:10px; font-size:12px; font-weight:bold;">+${Rewards.POINTS.VIDEO_WATCHED} Pts</span>`}
+                    </div>
+                    <div class="video-date" style="margin-bottom: 15px;">📅 Assigned: ${UI.formatDate(video.assignedDate)}</div>
                 `;
-                
+
+                // If valid YouTube ID, show Smart Player. Else, show fallback link.
+                if (videoId) {
+                    contentHtml += `<div id="${containerId}"></div>`;
+                    // Add to queue to be initialized by YouTube API
+                    if (!isWatched) {
+                         videoPlayersQueue.push({ containerId, videoId, title: video.title });
+                    } else {
+                        // If already watched, just show standard embed (no tracking needed)
+                        contentHtml = contentHtml.replace(`<div id="${containerId}"></div>`, 
+                            `<iframe width="100%" height="315" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allowfullscreen style="border-radius: var(--radius-md);"></iframe>`
+                        );
+                    }
+                } else {
+                    contentHtml += `<p style="color:red; font-size:12px;">Invalid Video Link</p>`;
+                }
+
+                videoCard.innerHTML = contentHtml;
                 videosContainer.appendChild(videoCard);
             });
+
+            // Trigger queue processing if API is already ready
+            if (youtubeApiReady) {
+                processVideoQueue();
+            }
         }
 
         async function loadRewards(player) {
