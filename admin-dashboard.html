@@ -736,9 +736,15 @@ async function saveAttendance() {
       const cost = prompt('Points Cost (e.g., 500):');
       if (!cost) return;
       
-      // NEW: Ask for secret code
+      // NEW: Ask for Quantity Limit
+      const quantityStr = prompt('How many winners allowed? (Enter a number, e.g. 1, 2, or 100):');
+      const maxRedemptions = parseInt(quantityStr, 10);
+      if (isNaN(maxRedemptions) || maxRedemptions < 1) {
+          alert("Invalid quantity. Please enter a number greater than 0.");
+          return;
+      }
+
       const redemptionInfo = prompt('Redemption Code/Message (Hidden until redeemed, e.g. "Gift Card: AMZN-123"):');
-      
       const description = prompt('Description (optional):');
 
       teamSettings.customRewards.push({
@@ -746,14 +752,16 @@ async function saveAttendance() {
         name,
         cost: parseInt(cost, 10),
         description: description || '',
-        redemptionInfo: redemptionInfo || ''
+        redemptionInfo: redemptionInfo || '',
+        maxRedemptions: maxRedemptions, // Total allowed
+        claimedCount: 0                 // Currently claimed
       });
 
       // FIX: Save to Supabase
       try {
         await DataManager.updateTeamSettings(teamSettings);
         renderCustomRewards();
-        UI.showAlert('Reward added', 'success');
+        UI.showAlert(`Reward added! Only ${maxRedemptions} players can claim it.`, 'success');
       } catch (err) {
         UI.showAlert('Failed to save reward', 'danger');
       }

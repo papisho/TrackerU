@@ -497,29 +497,65 @@
                     </div>
                 </div>`;
 
-            // 2. SHOW REDEMPTION SECTION ONLY IF ENABLED
+            // 2. SHOW REDEMPTION SECTION
             if (settings.rewardsEnabled && settings.customRewards.length > 0) {
                 html += `
                 <div class="metric-section" style="background: #fff8e1; border-left: 4px solid #f39c12;">
                     <h3 style="margin-bottom: var(--space-md);">🎁 Rewards Marketplace</h3>
-                    <p style="font-size: 0.9em; color: var(--gray-600); margin-bottom: var(--space-lg);">Redeem your hard-earned points for real rewards from your coach!</p>
+                    <p style="font-size: 0.9em; color: var(--gray-600); margin-bottom: var(--space-lg);">Redeem your hard-earned points for real rewards!</p>
                     <div class="grid grid-2">
                 `;
                 
                 settings.customRewards.forEach(reward => {
                     const canAfford = player.rewards.totalPoints >= reward.cost;
+                    
+                    // CHECK: Is it Sold Out? (Global Limit)
+                    const claimed = reward.claimedCount || 0;
+                    const max = reward.maxRedemptions || 1000; // Default to high if not set
+                    const isSoldOut = claimed >= max;
+                    const remaining = max - claimed;
+
+                    // CHECK: Did Player Already Redeem? (Personal Limit)
+                    const hasRedeemed = player.rewards.redeemedRewards && player.rewards.redeemedRewards.includes(reward.id);
+
+                    // Determine Button State
+                    let btnClass = 'btn-primary';
+                    let btnText = 'Redeem';
+                    let btnDisabled = false;
+                    let btnAction = `redeemReward('${reward.id}', ${reward.cost}, '${reward.name.replace(/'/g, "\\'")}')`;
+
+                    if (hasRedeemed) {
+                        btnClass = 'btn-success'; // Green for owned
+                        btnText = '✅ Already Owned';
+                        btnDisabled = true;
+                        btnAction = '';
+                    } else if (isSoldOut) {
+                        btnClass = 'btn-outline';
+                        btnText = '❌ Sold Out';
+                        btnDisabled = true;
+                        btnAction = '';
+                    } else if (!canAfford) {
+                        btnClass = 'btn-outline';
+                        btnText = 'Need Points';
+                        btnDisabled = true;
+                        btnAction = '';
+                    }
+
                     html += `
-                        <div style="background: white; padding: var(--space-md); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; justify-content: space-between;">
+                        <div style="background: white; padding: var(--space-md); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; justify-content: space-between; opacity: ${isSoldOut ? '0.7' : '1'};">
                             <div>
-                                <div style="font-weight: 700; font-size: 1.1em;">${reward.name}</div>
-                                <div style="color: var(--gray-600); font-size: 0.9em;">${reward.description}</div>
+                                <div style="display:flex; justify-content:space-between; align-items:start;">
+                                    <div style="font-weight: 700; font-size: 1.1em;">${reward.name}</div>
+                                    ${!isSoldOut && !hasRedeemed ? `<span style="font-size:0.8em; background:#fee2e2; color:#b91c1c; padding:2px 8px; border-radius:10px;">${remaining} left</span>` : ''}
+                                </div>
+                                <div style="color: var(--gray-600); font-size: 0.9em; margin-top:4px;">${reward.description}</div>
                             </div>
                             <div style="margin-top: var(--space-md); display: flex; justify-content: space-between; align-items: center;">
                                 <span style="font-weight: 700; color: #f39c12;">${reward.cost} pts</span>
-                                <button class="btn btn-sm ${canAfford ? 'btn-primary' : 'btn-outline'}" 
-                                    style="${canAfford ? '' : 'opacity: 0.5; cursor: not-allowed;'}"
-                                    onclick="${canAfford ? `redeemReward('${reward.id}', ${reward.cost}, '${reward.name.replace(/'/g, "\\'")}', '${(reward.redemptionInfo || '').replace(/'/g, "\\'")}')` : ''}">
-                                    ${canAfford ? 'Redeem' : 'Need Points'}
+                                <button class="btn btn-sm ${btnClass}" 
+                                    style="${btnDisabled ? 'opacity: 0.6; cursor: not-allowed;' : ''}"
+                                    onclick="${!btnDisabled ? btnAction : ''}">
+                                    ${btnText}
                                 </button>
                             </div>
                         </div>
@@ -539,12 +575,11 @@
             
             rewardsContainer.innerHTML = html;
 
-            // Render badges
+            // Render badges (same as before)
             const badgesContainer = document.getElementById('badgesContainer');
             Object.values(Rewards.BADGES).forEach(badge => {
                 const earned = player.rewards.earnedBadges.find(b => b.id === badge.id);
                 const progress = Rewards.getBadgeProgress(player, badge);
-                
                 const badgeCard = document.createElement('div');
                 badgeCard.className = `badge-card ${earned ? 'earned' : 'locked'}`;
                 badgeCard.innerHTML = `
@@ -552,36 +587,57 @@
                     <div class="badge-name">${badge.name}</div>
                     <div class="badge-description">${badge.description}</div>
                     ${earned ? `<div class="badge-earned-date">✓ Earned ${UI.formatDate(earned.earnedAt)}</div>` : ''}
-                    ${!earned && progress > 0 ? `
-                        <div class="badge-progress-bar">
-                            <div class="badge-progress-fill" style="width: ${progress}%;"></div>
-                        </div>
-                    ` : ''}
+                    ${!earned && progress > 0 ? `<div class="badge-progress-bar"><div class="badge-progress-fill" style="width: ${progress}%;"></div></div>` : ''}
                 `;
                 badgesContainer.appendChild(badgeCard);
             });
         }
 
-        
-        // Handle redemptions with new Modal
-        async function redeemReward(rewardId, cost, name, redemptionInfo) {
+        // Handle Redemptions with strict limits
+        async function redeemReward(rewardId, cost, name) {
             if(!confirm(`Spend ${cost} points to redeem "${name}"?`)) return;
             
             try {
-                // Update local object
-                const updatedPlayer = Rewards.redeemReward(currentPlayer, cost, name);
+                // 1. Fetch Latest Settings (Race Condition Check)
+                const settings = await DataManager.getTeamSettings();
+                const rewardIndex = settings.customRewards.findIndex(r => r.id === rewardId);
                 
+                if (rewardIndex === -1) throw new Error("Reward no longer exists.");
                 
-                // Save to Supabase (Using secure RPC)
+                const reward = settings.customRewards[rewardIndex];
+                const claimed = reward.claimedCount || 0;
+                const max = reward.maxRedemptions || 1000;
+
+                // 2. Global Check
+                if (claimed >= max) {
+                    alert("⚠️ Too late! This reward has just been fully redeemed by other players. Keep an eye out for the next one!");
+                    loadRewards(currentPlayer); // Refresh UI
+                    return;
+                }
+
+                // 3. Personal Check (Double check in case UI was stale)
+                if (currentPlayer.rewards.redeemedRewards && currentPlayer.rewards.redeemedRewards.includes(rewardId)) {
+                    alert("You have already owned this reward!");
+                    return;
+                }
+
+                // 4. Process Redemption
+                // Increment Global Count
+                settings.customRewards[rewardIndex].claimedCount = claimed + 1;
+                await DataManager.updateTeamSettings(settings);
+
+                // Update Player (Deduct Points & Add to History)
+                // Pass rewardId to track it
+                const updatedPlayer = Rewards.redeemReward(currentPlayer, cost, name, rewardId);
                 await DataManager.updatePlayerRewards(updatedPlayer.id, updatedPlayer.rewards);
                 
-                // Show Celebration Modal
+                // 5. Success UI
                 document.getElementById('modalRewardName').textContent = name;
-                
                 const codeSection = document.getElementById('modalCodeSection');
                 const codeBox = document.getElementById('modalRedemptionCode');
+                const redemptionInfo = reward.redemptionInfo;
                 
-                if (redemptionInfo && redemptionInfo !== 'undefined') {
+                if (redemptionInfo) {
                     codeSection.style.display = 'block';
                     codeBox.textContent = redemptionInfo;
                 } else {
@@ -589,8 +645,8 @@
                 }
                 
                 document.getElementById('redemptionModal').style.display = 'flex';
-                
-                loadPlayerProfile(); // Refresh UI behind modal
+                loadPlayerProfile(); 
+
             } catch(err) {
                 alert("Error: " + err.message);
             }

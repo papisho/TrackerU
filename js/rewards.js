@@ -68,6 +68,37 @@ const Rewards = {
     if (typeof player.rewards.currentStreak !== 'number') player.rewards.currentStreak = 0;
     if (typeof player.rewards.longestStreak !== 'number') player.rewards.longestStreak = 0;
     if (!Array.isArray(player.rewards.pointsHistory)) player.rewards.pointsHistory = [];
+    
+    // NEW: Track specific reward IDs redeemed by this player
+    if (!Array.isArray(player.rewards.redeemedRewards)) player.rewards.redeemedRewards = [];
+
+    return player;
+  },
+
+  // Deduct points (for redeeming rewards)
+  // UPDATED: Now requires rewardId to track history
+  redeemReward(player, cost, rewardName, rewardId) {
+    player = this.initializePlayerRewards(player);
+    
+    // Check points
+    if (player.rewards.totalPoints < cost) {
+      throw new Error('Insufficient points');
+    }
+
+    // Check if already redeemed (Per-player limit)
+    if (player.rewards.redeemedRewards.includes(rewardId)) {
+        throw new Error('You have already redeemed this reward.');
+    }
+
+    player.rewards.totalPoints -= cost;
+    player.rewards.pointsHistory.push({
+      points: -cost,
+      reason: `Redeemed: ${rewardName}`,
+      date: new Date().toISOString()
+    });
+    
+    // Track that this specific reward ID was redeemed
+    player.rewards.redeemedRewards.push(rewardId);
 
     return player;
   },
