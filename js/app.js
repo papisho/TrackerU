@@ -177,15 +177,36 @@ const DataManager = {
  // --- FIX: Secure Rewards Update for Players ---
   async updatePlayerRewards(id, rewards) {
     if (!supabaseClient) return;
-    
+
     // Call the secure RPC function we just created
-    const { error } = await supabaseClient.rpc('update_player_rewards', { 
-      player_id: id, 
-      new_rewards: rewards 
+    const { error } = await supabaseClient.rpc('update_player_rewards', {
+      player_id: id,
+      new_rewards: rewards
     });
 
     if (error) throw error;
-  }, 
+  },
+
+  async updatePlayerGoals(id, goals) {
+    if (!supabaseClient) return;
+    const { error } = await supabaseClient.rpc('update_player_goals', {
+      player_id: id,
+      new_goals: goals
+    });
+    if (error) throw error;
+  },
+
+  async getTeamLeaderboard(adminId) {
+    if (!supabaseClient) return [];
+    const { data, error } = await supabaseClient.rpc('get_team_leaderboard', {
+      target_admin_id: adminId
+    });
+    if (error) {
+      console.error('getTeamLeaderboard error:', error.message);
+      return [];
+    }
+    return Array.isArray(data) ? data : [];
+  },
 
   async init(force = false) {
     if (!supabaseClient) {

@@ -202,6 +202,75 @@
             display: block;
         }
 
+        /* Goal-setting rows inside metrics */
+        .metric-goal-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px dashed var(--gray-200);
+            flex-wrap: wrap;
+        }
+        .goal-input {
+            width: 60px;
+            padding: 4px 8px;
+            border: 2px solid var(--gray-300);
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .goal-progress-wrap {
+            flex: 1;
+            min-width: 100px;
+            background: var(--gray-200);
+            border-radius: 999px;
+            height: 8px;
+        }
+        .goal-progress-fill {
+            height: 100%;
+            border-radius: 999px;
+            background: var(--primary);
+        }
+
+        /* Podium styles for player leaderboard tab */
+        .podium {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: var(--space-lg);
+            margin-bottom: var(--space-2xl);
+        }
+        .podium-place {
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            padding: var(--space-xl);
+            text-align: center;
+            min-width: 140px;
+            transition: var(--transition);
+        }
+        .podium-place.first {
+            order: 2;
+            background: linear-gradient(135deg, #ffd700, #ffa500);
+            color: white;
+            transform: scale(1.1);
+        }
+        .podium-place.second {
+            order: 1;
+            background: linear-gradient(135deg, #c0c0c0, #a8a8a8);
+            color: white;
+        }
+        .podium-place.third {
+            order: 3;
+            background: linear-gradient(135deg, #cd7f32, #b8692d);
+            color: white;
+        }
+        .podium-rank { font-size: 48px; font-weight: 900; margin-bottom: var(--space-sm); }
+        .podium-name { font-size: var(--font-size-lg); font-weight: 700; margin-bottom: var(--space-xs); }
+        .podium-points { font-size: 24px; font-weight: 900; margin-top: var(--space-md); }
+        .podium-badges { margin-top: var(--space-sm); font-size: var(--font-size-sm); opacity: 0.9; }
+
         .ai-summary {
             background: linear-gradient(135deg, var(--primary-light), #f0f9ff);
             border-left: 4px solid var(--primary);
@@ -332,6 +401,7 @@
             <button class="tab-btn" onclick="switchTab('analytics-tab')">📈 Analytics</button>
             <button class="tab-btn" onclick="switchTab('rewards-tab')">🏆 Rewards & Badges</button>
             <button class="tab-btn" onclick="switchTab('videos-tab')">🎬 Training Videos</button>
+            <button class="tab-btn" onclick="switchTab('leaderboard-tab')">🏅 Leaderboard</button>
         </div>
 
         <div id="metrics-tab" class="tab-pane active">
@@ -350,6 +420,15 @@
             <div class="metric-section">
                 <h3 style="margin-bottom: var(--space-lg);">🎬 Assigned Training Videos</h3>
                 <div id="videosContainer"></div>
+            </div>
+        </div>
+
+        <div id="leaderboard-tab" class="tab-pane">
+            <div class="metric-section">
+                <h3 style="margin-bottom: var(--space-lg);">🏅 Team Leaderboard</h3>
+                <div id="leaderboardContainer">
+                    <p style="text-align:center;color:var(--gray-500);padding:2rem;">Loading leaderboard...</p>
+                </div>
             </div>
         </div>
     </div>
@@ -480,7 +559,9 @@
                 Object.entries(category).forEach(([metricKey, metric]) => {
                     const color = UI.getMetricRatingColor(metric.level);
                     const displayName = metricLabels[metricKey] || metricKey;
-                    
+                    const goalTarget = player.goals?.[catKey]?.[metricKey]?.target;
+                    const progressPct = goalTarget ? Math.min(100, Math.round((metric.level / goalTarget) * 100)) : 0;
+
                     html += `
                         <div class="metric-item">
                             <div class="metric-header">
@@ -488,6 +569,21 @@
                                 <span class="metric-level" style="background-color: ${color};">${metric.level}/10</span>
                             </div>
                             ${metric.comment ? `<div class="metric-comment">💬 ${metric.comment}</div>` : ''}
+                            <div class="metric-goal-row">
+                                <span style="font-size:0.8rem;color:var(--gray-500);">🎯 My Goal:</span>
+                                <input type="number" min="1" max="10" class="goal-input"
+                                    id="goal-${catKey}-${metricKey}"
+                                    value="${goalTarget || ''}" placeholder="1–10">
+                                <button class="btn btn-outline btn-sm"
+                                    onclick="setGoal('${catKey}','${metricKey}')">Set Goal</button>
+                                ${goalTarget ? `
+                                    <span style="font-size:0.8rem;color:var(--gray-500);">Target: ${goalTarget}/10</span>
+                                    <div class="goal-progress-wrap">
+                                        <div class="goal-progress-fill" style="width:${progressPct}%"></div>
+                                    </div>
+                                    <span style="font-size:0.8rem;font-weight:600;color:var(--primary)">${progressPct}%</span>
+                                ` : ''}
+                            </div>
                         </div>
                     `;
                 });
@@ -963,10 +1059,94 @@
             }, 100);
         }
 
+        async function setGoal(catKey, metricKey) {
+            const input = document.getElementById(`goal-${catKey}-${metricKey}`);
+            const target = parseInt(input?.value);
+            if (!target || target < 1 || target > 10) {
+                UI.showAlert('Enter a goal between 1 and 10.', 'warning');
+                return;
+            }
+            const goals = JSON.parse(JSON.stringify(currentPlayer.goals || {}));
+            if (!goals[catKey]) goals[catKey] = {};
+            goals[catKey][metricKey] = { target, setAt: new Date().toISOString().split('T')[0] };
+            try {
+                await DataManager.updatePlayerGoals(currentPlayer.id, goals);
+                currentPlayer.goals = goals;
+                loadMetrics(currentPlayer);
+                UI.showAlert('Goal saved! 🎯', 'success');
+            } catch (err) {
+                console.error('setGoal error:', err);
+                UI.showAlert('Failed to save goal. Please try again.', 'error');
+            }
+        }
+
+        async function loadLeaderboard(player) {
+            const container = document.getElementById('leaderboardContainer');
+            container.innerHTML = '<p style="text-align:center;color:var(--gray-500);padding:2rem;">Loading...</p>';
+            if (!player.admin_id) {
+                container.innerHTML = '<p style="text-align:center;color:var(--gray-500);">Leaderboard unavailable.</p>';
+                return;
+            }
+            const team = await DataManager.getTeamLeaderboard(player.admin_id);
+            if (!team || !team.length) {
+                container.innerHTML = '<p style="text-align:center;color:var(--gray-500);">No leaderboard data yet.</p>';
+                return;
+            }
+            const sorted = [...team].sort((a, b) =>
+                (b.rewards?.totalPoints || 0) - (a.rewards?.totalPoints || 0)
+            );
+            renderLeaderboardUI(sorted, player.id, container);
+        }
+
+        function renderLeaderboardUI(sorted, currentPlayerId, container) {
+            const medals = ['🥇', '🥈', '🥉'];
+            const podiumClasses = ['first', 'second', 'third'];
+            const displayOrder = [1, 0, 2]; // silver, gold, bronze (visual layout)
+
+            let html = '<div class="podium">';
+            displayOrder.forEach(i => {
+                const p = sorted[i];
+                if (!p) return;
+                const pts = p.rewards?.totalPoints || 0;
+                const badges = (p.rewards?.earnedBadges || []).length;
+                html += `
+                    <div class="podium-place ${podiumClasses[i]}">
+                        <div class="podium-rank">${medals[i]}</div>
+                        <div class="podium-name">${p.firstName}</div>
+                        <div class="podium-points">${pts} pts</div>
+                        <div class="podium-badges">${badges} badges</div>
+                    </div>`;
+            });
+            html += '</div>';
+
+            html += '<h4 style="margin-bottom:var(--space-md);">Full Rankings</h4>';
+            html += '<div class="leaderboard">';
+            sorted.forEach((p, i) => {
+                const pts = p.rewards?.totalPoints || 0;
+                const badges = (p.rewards?.earnedBadges || []).length;
+                const videos = (p.rewards?.videoWatchHistory || []).length;
+                const isMe = String(p.id) === String(currentPlayerId);
+                const highlightStyle = isMe
+                    ? 'background:rgba(37,99,235,0.07);border-left:4px solid var(--primary);'
+                    : '';
+                html += `
+                    <div class="leaderboard-item" style="${highlightStyle}">
+                        <div class="leaderboard-rank ${i < 3 ? 'top-3' : ''}">#${i + 1}${isMe ? ' (You)' : ''}</div>
+                        <div class="leaderboard-player">
+                            <div class="leaderboard-player-name">${p.firstName}</div>
+                            <div class="leaderboard-player-stats">${badges} badges · ${videos} videos</div>
+                        </div>
+                        <div class="leaderboard-points">${pts}</div>
+                    </div>`;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
         function switchTab(tabName) {
             document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            
+
             document.getElementById(tabName).classList.add('active');
             event.target.classList.add('active');
 
@@ -974,6 +1154,8 @@
                 loadAnalytics(currentPlayer);
             } else if (tabName === 'rewards-tab' && currentPlayer) {
                 loadRewards(currentPlayer);
+            } else if (tabName === 'leaderboard-tab' && currentPlayer) {
+                loadLeaderboard(currentPlayer);
             }
         }
 
