@@ -56,106 +56,186 @@ const Analytics = {
    * COACH ANALYTICS: Generate team-wide analytics
    */
 
-  // --- NEW: Player DNA / Archetype Logic ---
+  // --- Player DNA / Archetype Progression System ---
   generatePlayerDNA(player) {
     if (!player || !player.metrics) return null;
 
-    // 1. Flatten metrics to find the top 3 highest rated
-    const allMetrics = [];
+    // Build a flat lookup of all metric levels: { speed: 7, agility: 8, ... }
+    const metricLevels = {};
     Object.values(player.metrics).forEach(category => {
       Object.entries(category).forEach(([key, val]) => {
         if (typeof val.level === 'number') {
-          allMetrics.push({ key, value: val.level });
+          metricLevels[key] = val.level;
         }
       });
     });
 
-    // Sort descending by value
-    allMetrics.sort((a, b) => b.value - a.value);
-    
-    // If no data, return neutral
-    if (allMetrics.length === 0 || allMetrics[0].value === 0) return null;
+    const allValues = Object.values(metricLevels);
+    if (allValues.length === 0 || Math.max(...allValues) === 0) return null;
 
-    const topStats = allMetrics.slice(0, 3).map(m => m.key);
+    // Require at least 5 rated metrics before assigning any DNA
+    const ratedCount = allValues.filter(v => v > 0).length;
+    if (ratedCount < 5) {
+      return {
+        notEnoughData: true,
+        ratedCount,
+        name: 'DNA Loading...',
+        description: `${ratedCount} of 16 metrics evaluated. Your archetype will appear once more metrics are rated by your coach.`,
+        gradient: 'linear-gradient(135deg, #d1d5db 0%, #9ca3af 100%)',
+        textColor: '#374151',
+        topStats: [],
+        tierDots: null,
+        tierLabel: null
+      };
+    }
 
-    // 2. Define Archetypes
+    // Top 3 highest-rated metrics (for display)
+    const topStats = Object.entries(metricLevels)
+      .filter(([, v]) => v > 0)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([key]) => key);
+
+    // Tier thresholds
+    // Tier 3 (Full):      avg ≥ 7.5  AND  coverage ≥ 75%
+    // Tier 2 (Developing): avg ≥ 6.0  AND  coverage ≥ 50%
+    // Tier 1 (Potential):  avg ≥ 4.5  AND  2+ criteria rated
+    const getTier = (avg, coverage) => {
+      if (avg >= 7.5 && coverage >= 0.75) return 3;
+      if (avg >= 6.0 && coverage >= 0.50) return 2;
+      if (avg >= 4.5)                     return 1;
+      return 0; // doesn't qualify
+    };
+
+    // 6 archetypes — each with 3 progressive tiers
     const archetypes = [
       {
         id: 'maestro',
-        name: 'The Maestro 🎻',
-        description: 'You control the game with elite vision, passing, and intelligence.',
         criteria: ['passing', 'decisionMaking', 'spaceUsage', 'ballControl', 'anticipation'],
         gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        textColor: 'white'
+        textColor: 'white',
+        tiers: [
+          { name: 'The Playmaker',          description: "You read the game before others even see it. Keep sharpening your passing range and vision — a Maestro is being built." },
+          { name: 'Maestro in the Making',  description: "You're orchestrating plays and finding rhythm in chaos. Tighten your decision-making and the whole game bends to your will." },
+          { name: 'The Maestro 🎻',          description: "You control the game with elite vision, passing, and intelligence. The ball goes where you want it." }
+        ]
       },
       {
         id: 'speedster',
-        name: 'The Speedster ⚡',
-        description: 'Your electric pace and agility make you a nightmare for defenders.',
         criteria: ['speed', 'agility', 'ballControl', 'stamina'],
         gradient: 'linear-gradient(135deg, #f6d365 0%, #fda085 100%)',
-        textColor: '#1f2937' // Dark text for yellow bg
+        textColor: '#1f2937',
+        tiers: [
+          { name: 'The Flyer',          description: "Raw pace that defenders notice. Keep combining your speed with better control and you'll be unstoppable in the open field." },
+          { name: 'Speed Merchant',     description: "Your pace is becoming a real weapon. Add consistency in tight spaces and you'll turn defence into attack in seconds." },
+          { name: 'The Speedster ⚡',   description: "Electric pace and razor-sharp agility. You're a nightmare for any defender who tries to keep up." }
+        ]
       },
       {
         id: 'engine',
-        name: 'The Engine 🚂',
-        description: 'Relentless energy. You cover every blade of grass and never stop working.',
         criteria: ['stamina', 'performance', 'versatility', 'selfDevelopment'],
         gradient: 'linear-gradient(135deg, #0ba360 0%, #3cba92 100%)',
-        textColor: 'white'
+        textColor: 'white',
+        tiers: [
+          { name: 'The Workhorse',        description: "You never stop. Your effort lifts the team even on hard days. Channel that energy with more consistency and versatility." },
+          { name: 'Engine Running Hot',   description: "Your work rate is becoming your trademark. Cover ground, fill gaps, outlast everyone — the full Engine is almost there." },
+          { name: 'The Engine 🚂',         description: "Relentless energy. You cover every blade of grass and never stop working. The team runs on you." }
+        ]
       },
       {
         id: 'wall',
-        name: 'The Wall 🛡️',
-        description: 'A defensive rock. You win your duels and read the danger before it happens.',
         criteria: ['duels', 'anticipation', 'focus', 'emotionControl'],
         gradient: 'linear-gradient(135deg, #434343 0%, #000000 100%)',
-        textColor: 'white'
+        textColor: 'white',
+        tiers: [
+          { name: 'The Guardian',   description: "Defensive instincts are showing. You sense danger and step up when it matters. Build your composure and duel-winning ability." },
+          { name: 'Wall Rising',    description: "You're becoming impossible to beat one-on-one. Your focus and reading of the game make you a headache for any attacker." },
+          { name: 'The Wall 🛡️',    description: "A defensive rock. You win your duels and read the danger before it happens. Attackers dread you." }
+        ]
       },
       {
         id: 'sniper',
-        name: 'The Sniper 🎯',
-        description: 'Ice cold in front of goal. Your striking technique is your superpower.',
         criteria: ['ballStriking', 'focus', 'decisionMaking', 'emotionControl'],
-        gradient: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%)',
-        textColor: '#1f2937'
+        gradient: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)',
+        textColor: '#1f2937',
+        tiers: [
+          { name: 'The Marksman',          description: "You've got a natural eye for goal. Keep developing your technique and ice-cold composure under pressure." },
+          { name: 'Sniper in the Making',  description: "Your finishing and focus are becoming a real weapon. One more gear of consistency and you'll be lethal every game." },
+          { name: 'The Sniper 🎯',          description: "Ice cold in front of goal. Your striking technique is your superpower — defenders know it, goalkeepers fear it." }
+        ]
       },
       {
-        id: 'captain',
-        name: 'The General 🦁',
-        description: 'A natural leader. You drive standards with your voice and mentality.',
-        criteria: ['vocal', 'mentality', 'selfDevelopment', 'performance'],
+        id: 'general',
+        criteria: ['vocal', 'emotionControl', 'selfDevelopment', 'performance'],
         gradient: 'linear-gradient(135deg, #FDC830 0%, #F37335 100%)',
-        textColor: 'white'
+        textColor: 'white',
+        tiers: [
+          { name: 'The Voice',               description: "You speak up when it counts. Your emotional control and drive are noticed. Keep pushing standards for yourself and others." },
+          { name: 'General in the Making',   description: "You're rallying the team and setting the tone. Sharpen your consistency and you'll command the field by voice alone." },
+          { name: 'The General 🦁',           description: "A natural leader on and off the ball. You drive standards with your voice, mentality, and relentless example." }
+        ]
       }
     ];
 
-    // 3. Find the best fit
-    // We check how many of the player's Top 3 stats appear in each archetype's criteria
+    // Score each archetype:
+    // Use avgScore × coverage as the ranking score (penalises narrow fit).
+    // Also track the tier each archetype qualifies for.
     let bestFit = null;
-    let maxMatches = -1;
+    let bestTier = 0;
+    let bestRankScore = -1;
 
     archetypes.forEach(arch => {
-      const matchCount = topStats.filter(stat => arch.criteria.includes(stat)).length;
-      if (matchCount > maxMatches) {
-        maxMatches = matchCount;
+      const ratedCriteria = arch.criteria
+        .map(key => metricLevels[key])
+        .filter(v => typeof v === 'number' && v > 0);
+
+      if (ratedCriteria.length < 2) return; // Need at least 2 rated criteria
+
+      const avgScore = ratedCriteria.reduce((sum, v) => sum + v, 0) / ratedCriteria.length;
+      const coverage = ratedCriteria.length / arch.criteria.length;
+      const tier = getTier(avgScore, coverage);
+
+      if (tier === 0) return; // Doesn't meet minimum threshold
+
+      const rankScore = avgScore * coverage;
+
+      if (
+        rankScore > bestRankScore ||
+        (rankScore === bestRankScore && tier > bestTier)
+      ) {
+        bestRankScore = rankScore;
+        bestTier = tier;
         bestFit = arch;
       }
     });
 
-    // Default if no strong match found yet
-    if (!bestFit || maxMatches === 0) {
-        bestFit = {
-            name: "The Prospect 💎",
-            description: "A well-rounded player developing a unique style. Keep working to define your game!",
-            gradient: "linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)",
-            textColor: '#1f2937'
-        };
+    // Fallback: well-rounded / no clear fit
+    if (!bestFit) {
+      return {
+        name: 'The Prospect 💎',
+        description: "A well-rounded player still carving out a unique style. Every great archetype starts here — keep earning your ratings.",
+        gradient: 'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)',
+        textColor: '#1f2937',
+        topStats,
+        tier: 0,
+        tierLabel: 'Finding Your Path',
+        tierDots: '○ ○ ○'
+      };
     }
 
+    const tierLabels = ['', 'Raw Potential', 'Archetype in Progress', 'Scouting Report Archetype'];
+    const tierDots   = ['', '● ○ ○',         '● ● ○',                  '● ● ●'];
+
     return {
-        ...bestFit,
-        topStats: topStats // Pass these back to display them
+      id: bestFit.id,
+      gradient: bestFit.gradient,
+      textColor: bestFit.textColor,
+      tier: bestTier,
+      name: bestFit.tiers[bestTier - 1].name,
+      description: bestFit.tiers[bestTier - 1].description,
+      tierLabel: tierLabels[bestTier],
+      tierDots: tierDots[bestTier],
+      topStats
     };
   },
 

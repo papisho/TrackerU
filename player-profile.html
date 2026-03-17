@@ -1037,10 +1037,12 @@
                     dnaContainer.innerHTML = `
                         <div class="dna-card" style="background: ${dna.gradient}; color: ${dna.textColor};">
                             <div class="dna-content">
-                                <div class="dna-label">Scouting Report Archetype</div>
+                                <div class="dna-label">${dna.tierLabel || 'Scouting Report Archetype'}</div>
+                                ${dna.tierDots ? `<div style="margin: 6px 0 10px; font-size: 1.3rem; letter-spacing: 5px; opacity: 0.85;">${dna.tierDots}</div>` : ''}
                                 <div class="dna-title">${dna.name}</div>
                                 <div class="dna-description">${dna.description}</div>
-                                
+
+                                ${dna.topStats.length > 0 ? `
                                 <div style="margin-top: 15px; font-size: 0.85rem; opacity: 0.9; margin-bottom: 8px; font-weight:600;">Dominant Attributes:</div>
                                 <div class="dna-stats-row">
                                     ${dna.topStats.map(stat => `
@@ -1048,7 +1050,7 @@
                                             ${formatKey(stat)}
                                         </div>
                                     `).join('')}
-                                </div>
+                                </div>` : ''}
                             </div>
                         </div>
                     `;
