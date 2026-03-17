@@ -1266,6 +1266,34 @@ async function saveAttendance() {
         html += `</div>`;
       });
 
+      // --- Player Goals Section (read-only for coach) ---
+      html += `<h4 style="border-bottom:2px solid var(--gray-200);padding-bottom:var(--space-md);margin:var(--space-lg) 0 var(--space-md);">🎯 Player Goals</h4>`;
+      const playerGoals = player.goals || {};
+      let hasAnyGoal = false;
+      Object.entries(METRIC_CONFIG).forEach(([catKey, catCfg]) => {
+        Object.entries(catCfg.metrics).forEach(([mKey, mLabel]) => {
+          const goal = playerGoals[catKey]?.[mKey];
+          if (!goal) return;
+          hasAnyGoal = true;
+          const current = player.metrics?.[catKey]?.[mKey]?.level || 0;
+          const pct = Math.min(100, Math.round((current / goal.target) * 100));
+          html += `
+            <div style="display:flex;justify-content:space-between;align-items:center;
+              padding:var(--space-sm) 0;border-bottom:1px solid var(--gray-100);">
+              <span style="font-weight:500;">${mLabel}</span>
+              <div style="display:flex;align-items:center;gap:var(--space-md);flex-wrap:wrap;">
+                <span style="color:var(--gray-500);">Now: ${current}/10</span>
+                <span style="color:var(--primary);font-weight:700;">Target: ${goal.target}/10</span>
+                <span style="color:var(--gray-500);font-size:var(--font-size-sm);">${pct}% there</span>
+              </div>
+            </div>`;
+        });
+      });
+      if (!hasAnyGoal) {
+        html += `<p style="color:var(--gray-500);font-style:italic;">No goals set by this player yet.</p>`;
+      }
+      // ------------------------------------------------------------------
+
       html += `<h4 style="border-bottom:2px solid var(--gray-200);padding-bottom:var(--space-md);margin:var(--space-lg) 0 var(--space-md);">Assigned Videos</h4>`;
 
       if (Array.isArray(player.assignedVideos) && player.assignedVideos.length) {
